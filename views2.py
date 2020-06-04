@@ -92,6 +92,8 @@ class MainUtility(QMainWindow):
         self.pcba_frame_Highlight = []
         self.pcba_hexDict = {}
         self.pcba_hexList = []
+        self.hex_lbl_Dict = {}
+        self.hex_lbl_list = []
         self.counter = 1
         self.pcba_counter = 1
         self.rowCount = 0
@@ -99,9 +101,8 @@ class MainUtility(QMainWindow):
         self.sensor_num = [False, 0]
         self.physical_num = 1
         self.lsb = -1
-        self.bin_hex_list = []
         self.order_dict = {}
-        self.final_order ={}
+        self.final_order = {}
 
 
         self.pcba_gridlayout = QGridLayout()
@@ -190,14 +191,14 @@ class MainUtility(QMainWindow):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
-            self.pcbaImgInfo(self.counter,0)
+            self.pcbaImgInfo(self.counter, 0)
             self.counter += 1
 
         if event.key() == Qt.Key_D and self.physical_num is not self.sensor_num[1] + 1:
-            self.highlight(self.physical_num,True)
+            self.highlight(self.physical_num, True)
 
         if event.key() == Qt.Key_A and self.physical_num is not 2:
-            self.highlight(self.physical_num,False)
+            self.highlight(self.physical_num, False)
 
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
@@ -258,15 +259,14 @@ class MainUtility(QMainWindow):
         self.sort_btn.setText("Sort")
         self.sort_btn.setGeometry(10, 10, 110, 75)
         self.sort_btn.setEnabled(self.sensor_num[0])
-        self.sort_btn.clicked.connect(self.OneWireSort)#self.sort)
+        self.sort_btn.clicked.connect(self.OneWireSort)  # self.sort)
 
         self.replace_btn = QPushButton()
         self.replace_btn.setText("Replace Button")
         self.replace_btn.clicked.connect(self.boardReplace)
 
-
         self.scan_gridLayout.addWidget(self.sort_btn, 1, 0)
-        self.scan_gridLayout.addWidget(self.replace_btn,2,0)
+        self.scan_gridLayout.addWidget(self.replace_btn, 2, 0)
 
         self.scan_tab.setLayout(self.scan_gridLayout)
 
@@ -326,11 +326,9 @@ class MainUtility(QMainWindow):
         final_test_btn = QPushButton()
         final_test_btn.setText("Final Test")
 
-        self.program_gridLayout.addWidget(eeprom_btn,0,0)
-        self.program_gridLayout.addWidget(cable_verify_btn,1,0)
-        self.program_gridLayout.addWidget(final_test_btn,2,0)
-
-
+        self.program_gridLayout.addWidget(eeprom_btn, 0, 0)
+        self.program_gridLayout.addWidget(cable_verify_btn, 1, 0)
+        self.program_gridLayout.addWidget(final_test_btn, 2, 0)
 
         # inputting of widgets
 
@@ -360,7 +358,7 @@ class MainUtility(QMainWindow):
         cable_grid.setVerticalSpacing(100)
         cable_grid.setHorizontalSpacing(160)
         cable_grid.setRowStretch(2, 1)
-        cable_grid.setColumnStretch(10,1)
+        cable_grid.setColumnStretch(10, 1)
         cable_group = QGroupBox()
         cable_group.setLayout(cable_grid)
 
@@ -378,13 +376,13 @@ class MainUtility(QMainWindow):
         column = 0
         total = self.sensor_num[1]
         for qt in range(0, total):
-            if column%9 is 0:
+            if column % 9 is 0:
                 row += 1
                 column = 0
             box = self.build_img(self.file_specs[x][2], z)
-            pBox =self.build_img(self.file_specs[x][2],z)
+            pBox = self.build_img(self.file_specs[x][2], z)
             cable_grid.addWidget(box, row, column, 2, 2)
-            program_grid.addWidget(pBox,row,column,2,2)
+            program_grid.addWidget(pBox, row, column, 2, 2)
             column += 1
             x += 1
             z += 1
@@ -441,7 +439,7 @@ class MainUtility(QMainWindow):
 
         self.sensor_num[1] = (int(file_desc[2][1]))
         pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
-        pcba_display.setFont(self.font(20,45,True))
+        pcba_display.setFont(self.font(20, 45, True))
         self.scan_gridLayout.addWidget(pcba_display, 0, 0)
 
         desc_lbl = []
@@ -605,7 +603,7 @@ class MainUtility(QMainWindow):
         font.setWeight(weigth)
         return font
 
-    def pcbaImgInfo(self, num,replace):
+    def pcbaImgInfo(self, num, replace):
 
         pcba_frame = QtWidgets.QFrame()
         pcba_frame.setGeometry(QtCore.QRect(160, 70, 211, 131))
@@ -618,19 +616,20 @@ class MainUtility(QMainWindow):
         pcba_image_lbl.setPixmap(QtGui.QPixmap("Sensor_PCBA.jpg"))
         pcba_image_lbl.setScaledContents(True)
 
-        hex_number_lbl = QtWidgets.QLabel(pcba_frame)
-        hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 160, 16))
-        hex_number_lbl.setFont(self.font(18, 18, True))
+        self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
+        self.hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 160, 16))
+        self.hex_number_lbl.setFont(self.font(18, 18, True))
         random_hex = rand.randint(0000000000000000, 9999999999999999)
 
         self.pcba_hexList.append(random_hex)
         self.pcba_frame_Highlight.append(random_hex)
         self.pcba_hexDict[random_hex] = self.counter
+        self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
+        self.hex_lbl_list.append(self.hex_number_lbl)
 
         hex_number = hex(random_hex)
         hex_number = hex_number[2:]
-        hex_number_lbl.setText(hex_number)
-
+        self.hex_number_lbl.setText(hex_number)
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(0, 10, 45, 16))
@@ -679,64 +678,31 @@ class MainUtility(QMainWindow):
 
         self.scan_scrollArea.setWidget(self.pcba_groupBox)
 
-    # def sort(self):
-    #     temp = self.pcba_hexList
-    #     self.QuickSort(temp, 0, len(temp) - 1)#returns a sorted list
-    #     count = 0
-    #
-    #     for hex in temp: #this nested for loop orders the dictionary of hex numbers in its sorted order
-    #         for index in range(len(temp)):
-    #             if self.pcba_hexList[index] is hex:
-    #                 self.pcba_hexDict[hex] = index
-    #
-    #     for add in self.pcba_hexDict:  # this loop runs through the entire dictionary and add 1 to the ordered num
-    #         self.pcba_hexDict[add] = (self.pcba_hexDict.get(add) + 1)
-    #
-    #     for hexNum in self.pcba_hexDict:  # this loop puts that number as a label to the frame box of pcba's
-    #         self.pcba_imgs[count].setText(str(self.pcba_hexDict.get(hexNum)))
-    #         count += 1
-    #
-    #     run = 0
-    #     next = 0
-    #     #this nested loop updates the pcba frame with its physical order
-    #     for hex in self.pcba_hexDict:
-    #         for frame in self.pcba_frame_Dict:
-    #             if run is next:
-    #                 self.pcba_frame_Dict[frame] = self.pcba_hexDict.get(hex)
-    #             run += 1
-    #         run = 0
-    #         next += 1
-    #
-    #     self.file_btn.setEnabled(False)
-    #     self.highlight(self.physical_num, True)
-    #     self.sort_btn.setEnabled(False)
-    #     self.buildDisplay()
-
-
     def highlight(self, nextNum, rightClick):
 
         if (rightClick):
             for key in self.pcba_frame_Dict:
                 if nextNum is self.pcba_frame_Dict.get(key):
                     key.setAutoFillBackground(True)
-                    key.setPalette(self.palette(255,139,119))
+                    key.setPalette(self.palette(255, 139, 119))
                     if key is not self.pcba_memory:
                         self.pcba_memory.append(key)
 
             if nextNum > 1:
-                self.pcba_memory[nextNum-2].setAutoFillBackground(False)
+                self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
             self.physical_num += 1
-        else:#left click
-            self.pcba_memory[nextNum-2].setAutoFillBackground(False)
-            self.pcba_memory[nextNum-3].setAutoFillBackground(True)
+        else:  # left click
+            self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
+            self.pcba_memory[nextNum - 3].setAutoFillBackground(True)
             self.physical_num -= 1
 
-    def palette(self,red ,green, blue):
+    def palette(self, red, green, blue):
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(red, green, blue))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
         return palette
+
     def line(self):
         line = QtWidgets.QFrame()
         line.setGeometry(QtCore.QRect(10, 350, 781, 16))
@@ -752,125 +718,119 @@ class MainUtility(QMainWindow):
         line.setFrameShape(QtWidgets.QFrame.HLine)
         return line
 
-    def create_messagebox(self, type, title, text, info_text):
-        """A helper method for creating message boxes."""
-        msgbox = QMessageBox(self)
-        msgbox.setWindowTitle(title)
-        msgbox.setText(text)
-        msgbox.setInformativeText(info_text)
-        if type == "Warning":
-            msgbox.setIcon(QMessageBox.Warning)
-            msgbox.setStandardButtons(QMessageBox.Yes|QMessageBox.No)
-            msgbox.setDefaultButton(QMessageBox.No)
-        elif type == "Error":
-            msgbox.setIcon(QMessageBox.Error)
-        elif type == "Information":
-            msgbox.setIcon(QMessageBox.Information)
-        else:
-            raise InvalidMsgType
-        return msgbox
-
     def boardReplace(self):
-        self.message =QDialog()
-        self.message.resize(650,150)
+        self.message = QDialog()
+        self.message.resize(650, 150)
         self.message.setSizeGripEnabled(True)
         self.message.setWindowTitle("Board Replace")
 
         msg_grid = QGridLayout()
         self.message.setLayout(msg_grid)
 
-        yes_btn= QPushButton(self.message)
-        yes_btn.setGeometry(QtCore.QRect(10,70,100,22))
-        yes_btn.setText("Yes")
-        yes_btn.clicked.connect(self.yesButton)
-
-        no_btn= QPushButton(self.message)
-        no_btn.setGeometry(QtCore.QRect(120,70,100,22))
-        no_btn.setText("No")
-        no_btn.clicked.connect(self.noButton)
-
-        msg_lineEdit = QtWidgets.QLineEdit(self.message)
-        msg_lineEdit.setGeometry(QtCore.QRect(480, 10, 113, 22))
-        msg_lineEdit.setPlaceholderText("ex: 5")
-        msg_lineEdit.setEnabled(True)
-
-        sort_lbl =QtWidgets.QLabel(self.message)
-        sort_lbl.setGeometry(QtCore.QRect(10,50,550,20))
-        sort_lbl.setFont(self.font(20,20,True))
-        sort_lbl.setText("Do you wish to Re-enable the Sort Button?")
+        self.msg_lineEdit = QtWidgets.QLineEdit(self.message)
+        self.msg_lineEdit.setGeometry(QtCore.QRect(480, 10, 113, 22))
+        self.msg_lineEdit.setPlaceholderText("ex: 5")
+        self.msg_lineEdit.setEnabled(True)
 
         replace_label = QtWidgets.QLabel(self.message)
         replace_label.setGeometry(QtCore.QRect(10, 10, 550, 20))
         replace_label.setText("Please enter the physical number of the board to Replace:")
-        replace_label.setFont(self.font(15,20,True))
+        replace_label.setFont(self.font(15, 20, True))
 
-        x =self.message.exec_()
+        self.msg_lineEdit.returnPressed.connect(self.sortButtonWarning)
+
+        x = self.message.exec_()
+
+    def sortButtonWarning(self):
+
+        num = int(self.msg_lineEdit.text())
+        #these two if statements are an error check!
+        if num > self.sensor_num[1] or num < 1:
+            error = QMessageBox.critical(self.message,"Error","Physical number not found please enter again",QMessageBox.Ok)
+            if error == QMessageBox.Ok:
+                self.message.close()
+                self.boardReplace()
+        else:
+            self.newScan(self.msg_lineEdit.text())
+
+            call = QMessageBox.information(self.message,"Sort Button","Would you like to re-Enable the Sort Button? ",QMessageBox.Yes | QMessageBox.No)
+
+            if call == QMessageBox.Yes:
+                self.yesButton()
+            if call == QMessageBox.No:
+                self.noButton()
+
+    def newScan(self,phy_num):
+        scan_new = QMessageBox.information(self.message,"Scan New pcba","Please Scan New PCBA Board",QMessageBox.Ok)
+        random_hex = rand.randint(0000000000000000, 9999999999999999)
+        hex_number = hex(random_hex)
+        hex_number = hex_number[2:]
+
+        index = 0
 
 
+
+
+        #this loop updates self.pcba_hexList
+        for oldHex in self.pcba_hexDict:
+            if self.pcba_hexDict[oldHex] is int(phy_num):
+                index = self.pcba_hexList.index(oldHex)
+                self.pcba_hexList.remove(oldHex)
+                self.pcba_hexList.insert(index,random_hex)
+
+        for key in self.hex_lbl_Dict:
+            if self.hex_lbl_Dict.get(key) is int(phy_num):
+                key.setText(hex_number)
 
     def yesButton(self):
-        m = self.create_messagebox("Warning","Warning","Are you sure you want to re-Sort? Doing so will re-organize all the boards "," ")
-        m.buttonClicked.connect(self.doubleCheck)
-        #m.buttonClicked.connect(self.doubleCheck)
-        exc = m.exec_()
-        self.message.close()
-    def doubleCheck(self,i):
-        if i is QPushButton.Yes:
-            print(i.text())
-            self.sort_btn.setEnabled(True)
+        m = QMessageBox.warning(self.message,"Warning",
+                                   "Are you sure you want to re-Sort?Why dont you give Rodrigo a call? Doing so will re-organize all the boards! ",
+                                QMessageBox.Yes | QMessageBox.No)
+        if m == QMessageBox.Yes:
+            self.doubleCheck()
         else:
-            self.message.close()
+            self.noButton()
+
+    def doubleCheck(self):
+        self.sort_btn.setEnabled(True)
+        self.message.close()
 
     def noButton(self):
         self.message.close()
 
-
-    def Partition(self, A, p, r):
-        x = A[r]
-        i = (p - 1)
-        j = p
-        for run in range(j, r):
-            if (A[j] <= x):
-                i = i + 1
-                A[i], A[j] = A[j], A[i]
-            j = j + 1
-        A[i + 1], A[r] = A[r], A[i + 1]
-        return (i + 1)
-
-    def QuickSort(self, A, p, r):
-        if (p < r):
-            q = self.Partition(A, p, r)
-            self.QuickSort(A, p, q - 1)
-            self.QuickSort(A, q + 1, r)
-
     def OneWireSort(self):
         zero_list = []
         one_list = []
+        bin_hex_list = []
 
         for hex in self.pcba_hexList:
-            self.bin_hex_list.append(bin(hex))
+            bin_hex_list.append(bin(hex))
 
-        #split hex list into zeros and ones
-        for binary in self.bin_hex_list:
+        # split hex list into zeros and ones
+        for binary in bin_hex_list:
             if binary[self.lsb] is "0":
                 zero_list.append(binary)
             else:
                 one_list.append(binary)
 
         zList = len(zero_list)
-        self.Halfsies(zero_list,1,len(zero_list))
-        self.Halfsies(one_list,zList+1,len(one_list))
+        self.Halfsies(zero_list, 1, len(zero_list))
+        self.Halfsies(one_list, zList + 1, len(one_list))
 
         count = 0
-        #this for loop creates a dictionary with binary as key and number as value
-        for b in self.bin_hex_list:
+        # this for loop creates a dictionary with binary as key and number as value
+        for b in bin_hex_list:
             self.final_order[b] = str(count)
-            count +=1
+            count += 1
 
-        for order in self.final_order:#order grabs the binary string
-            for place in self.order_dict:#place grabs the physical location
-                if order is self.order_dict[place]:#searches throught the binary strings in order dic and puts them in final order
+        key_count = 0
+
+        for order in self.final_order:  # order grabs the binary string
+            for place in self.order_dict:  # place grabs the physical location
+                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
                     self.final_order[order] = place
+                    self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
+                    key_count += 1
 
         run = 0
         next = 0
@@ -888,44 +848,43 @@ class MainUtility(QMainWindow):
             self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
             c += 1
 
-
-        info =QLabel("Use 'A' or 'D' to cycle through the pcba boards")
-        info.setFont(self.font(20,20,True))
-        self.scan_gridLayout.addWidget(info,0,2)
+        info = QLabel("Use 'A' or 'D' to cycle through the pcba boards")
+        info.setFont(self.font(20, 20, True))
+        self.scan_gridLayout.addWidget(info, 0, 2)
 
         self.file_btn.setEnabled(False)
         self.highlight(self.physical_num, True)
         self.sort_btn.setEnabled(False)
         self.buildDisplay()
+        self.final_order.clear()
 
-
-
-
-    def Halfsies(self,list,key,size):
-        count =1
-        last= -1
+    def Halfsies(self, list, key, size):
+        '''This method sorts and puts the given list into the self.order_dict dictionary'''
+        count = 1
+        last = -2
         k = key
+        first_index = 0
 
         for run in range(size):
             hold = list[0]
             while count < len(list):
                 if hold[last] < list[count][last]:
-                    count +=1
+                    count += 1
+                    last = -2
 
                 elif hold[last] is list[count][last]:
-                    if hold is list[count]:
-                        count += 1
-                    else:
-                        last -= 1
+                    last -= 1
 
                 elif hold[last] > list[count][last]:
+                    first_index = list.index(hold)
                     hold = list[count]
-                    last = -1
+                    list[first_index], list[count] = list[count], list[first_index]
+                    last = -2
                     count = 1
-            self.order_dict[k] = hold #this will put the least on top
+            self.order_dict[k] = hold  # this will put the least on top
             k += 1
+            count = 1
             list.remove(hold)
-
 
 
 def showscreen():
