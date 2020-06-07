@@ -2,7 +2,6 @@ import os
 import re
 import math
 import random as rand
-import QuickSort as quick
 # import wizard
 # import serialmanager
 # import model
