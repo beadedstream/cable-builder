@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import math
 import random as rand
 # import wizard
@@ -10,7 +11,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent, Qt
 
-# import QGraphicsSceneMouseEvent as mB
+
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
     QLineEdit, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
@@ -85,6 +86,7 @@ class MainUtility(QMainWindow):
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
+        #these are variables and list used throught the entire program
         self.pcba_imgs = []
         self.pcba_frame_Dict = {}
         self.pcba_memory = []
@@ -103,16 +105,15 @@ class MainUtility(QMainWindow):
         self.order_dict = {}
         self.final_order = {}
 
-
-        self.pcba_gridlayout = QGridLayout()
-        self.pcba_gridlayout.setVerticalSpacing(100)
-        self.pcba_gridlayout.setHorizontalSpacing(200)
-        self.pcba_gridlayout.setColumnStretch(7, 1)
-        self.pcba_gridlayout.setRowStretch(22, 1)
-
-        self.pcba_groupBox = QGroupBox()
-        self.pcba_groupBox.setFlat(True)
-        self.pcba_groupBox.setLayout(self.pcba_gridlayout)
+        # self.pcba_gridlayout = QGridLayout()
+        # self.pcba_gridlayout.setVerticalSpacing(100)
+        # self.pcba_gridlayout.setHorizontalSpacing(200)
+        # self.pcba_gridlayout.setColumnStretch(7, 1)
+        # self.pcba_gridlayout.setRowStretch(22, 1)
+        #
+        # self.pcba_groupBox = QGroupBox()
+        # self.pcba_groupBox.setFlat(True)
+        # self.pcba_groupBox.setLayout(self.pcba_gridlayout)
 
         self.initUI()
         # self.center()
@@ -188,16 +189,33 @@ class MainUtility(QMainWindow):
         self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self.setWindowTitle("BeadedStream Manufacturing App 2")
 
+        self.pcba_gridlayout = QGridLayout()
+        self.pcba_gridlayout.setVerticalSpacing(100)
+        self.pcba_gridlayout.setHorizontalSpacing(200)
+        self.pcba_gridlayout.setColumnStretch(7, 1)
+        self.pcba_gridlayout.setRowStretch(22, 1)
+
+        self.pcba_groupBox = QGroupBox()
+        self.pcba_groupBox.setFlat(True)
+        self.pcba_groupBox.setLayout(self.pcba_gridlayout)
+
     def keyPressEvent(self, event):
+        key = event.key()
+        print(event.key())
+        if key ==QtCore.Qt.Key_Left:
+            print("Hello left")
+        elif key ==  QtCore.Qt.Key_Right:
+            print("Hello Right")
+
         if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
             self.pcbaImgInfo(self.counter, 0)
             self.counter += 1
 
-        if event.key() == Qt.Key_D and self.physical_num is not self.sensor_num[1] + 1:
-            self.highlight(self.physical_num, True)
+        #if event.key() == Qt.Key_D and self.physical_num is not self.sensor_num[1] + 1:
+            #self.highlight(self.physical_num, True)
 
-        if event.key() == Qt.Key_A and self.physical_num is not 2:
-            self.highlight(self.physical_num, False)
+        # if event.key() == Qt.Key_A and self.physical_num is not 2:
+        #     self.highlight(self.physical_num, False)
 
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
@@ -242,6 +260,7 @@ class MainUtility(QMainWindow):
         # scan tab window
 
         self.scan_tab = QtWidgets.QWidget()
+        self.scan_tab.setEnabled(False)
 
         self.scan_gridLayout = QtWidgets.QGridLayout()
 
@@ -264,13 +283,41 @@ class MainUtility(QMainWindow):
         self.replace_btn.setText("Replace Button")
         self.replace_btn.clicked.connect(self.boardReplace)
 
+        left_arrow_icon = QtGui.QIcon()
+        left_arrow_icon.addPixmap(QtGui.QPixmap("left-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        right_arrow_icon = QtGui.QIcon()
+        right_arrow_icon.addPixmap(QtGui.QPixmap("right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        arrow_frame = QtWidgets.QFrame()
+        arrow_grid =QGridLayout()
+        arrow_frame.setLayout(arrow_grid)
+
+        self.left_arrow_btn = QtWidgets.QPushButton()
+        self.left_arrow_btn.setIcon(left_arrow_icon)
+        self.left_arrow_btn.setIconSize(QtCore.QSize(25, 20))
+        self.left_arrow_btn.clicked.connect(self.left_check)
+        self.left_arrow_btn.setEnabled(False)
+
+        self.right_arrow_btn = QtWidgets.QPushButton()
+        self.right_arrow_btn.setIcon(right_arrow_icon)
+        self.right_arrow_btn.setIconSize(QtCore.QSize(25,20))
+        self.right_arrow_btn.clicked.connect(self.right_check)
+        self.right_arrow_btn.setEnabled(False)
+
+
+        arrow_grid.addWidget(self.left_arrow_btn, 0, 0)
+        arrow_grid.addWidget(self.right_arrow_btn, 0, 1)
+
         self.scan_gridLayout.addWidget(self.sort_btn, 1, 0)
         self.scan_gridLayout.addWidget(self.replace_btn, 2, 0)
+        self.scan_gridLayout.addWidget(arrow_frame,3,0)
 
         self.scan_tab.setLayout(self.scan_gridLayout)
 
         # build tab
         self.build_tab = QtWidgets.QWidget()
+        self.build_tab.setEnabled(False)
         self.build_gridLayout = QtWidgets.QGridLayout()
 
         self.build_scrollArea = QtWidgets.QScrollArea()
@@ -282,7 +329,7 @@ class MainUtility(QMainWindow):
         test_btn = QtWidgets.QPushButton()
         test_btn.setText("Test Cable")
         test_btn.setGeometry(10, 10, 110, 75)
-        # test_btn.clicked.connect(self.sort)
+        test_btn.clicked.connect(self.test_cable)
 
         para_Pwr_btn = QPushButton()
         para_Pwr_btn.setText("Parasitic Power Test")
@@ -296,13 +343,12 @@ class MainUtility(QMainWindow):
         self.build_tab.setLayout(self.build_gridLayout)
 
         self.cable_grid = QGridLayout()
-        # cable_grid.setColumnStretch(6,1)
         self.cable_group = QGroupBox()
         self.cable_group.setLayout(self.cable_grid)
 
         # program tab
-
         self.program_tab = QtWidgets.QWidget()
+        self.program_tab.setEnabled(False)
 
         self.program_gridLayout = QGridLayout()
 
@@ -324,6 +370,7 @@ class MainUtility(QMainWindow):
 
         final_test_btn = QPushButton()
         final_test_btn.setText("Final Test")
+        final_test_btn.clicked.connect(self.csv)
 
         self.program_gridLayout.addWidget(eeprom_btn, 0, 0)
         self.program_gridLayout.addWidget(cable_verify_btn, 1, 0)
@@ -343,6 +390,24 @@ class MainUtility(QMainWindow):
 
         self.setCentralWidget(self.build_central_widget)
 
+    def right_check(self):
+        if self.physical_num > 1:
+            self.left_arrow_btn.setEnabled(True)
+            #locks button if it reaches the end
+        if self.physical_num is self.sensor_num[1]:
+            self.right_arrow_btn.setEnabled(False)
+
+        if self.physical_num is not self.sensor_num[1] + 1:
+            self.highlight(self.physical_num, True)
+    def left_check(self):
+        if self.physical_num < self.sensor_num[1] + 2:
+            self.right_arrow_btn.setEnabled(True)
+
+        if self.physical_num is 3:
+            self.left_arrow_btn.setEnabled(False)
+
+        if self.physical_num is not 1:
+            self.highlight(self.physical_num, False)
     def calibrateScreen(self):
         central_widget = QWidget()
 
@@ -415,153 +480,166 @@ class MainUtility(QMainWindow):
 
     def prep_information(self):
         """ Grabs the file path for the Select File"""
-        select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
-                                                  "Excel (*.csv *.xlsx *.tsv);;PDF(*.pdf);;text(*.txt);;html(*.html)")
-        if (select_file[0] is ''):
-            return
-        else:
-            file = open(select_file[0], "r")
+        try:
+            select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
+                                                  "Excel (*.csv *.xlsx *.tsv)")#;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
+            if (select_file[0] is ''):
+                return
+            else:
+                file = open(select_file[0], "r")
 
-        file_contents = []
 
-        for x in file:
-            file_contents.append(x)
 
-        # this loop splits info into individual list
-        file_desc = []
-        for descript_cont in range(1, 7):
-            file_desc.append(file_contents[descript_cont].split(","))
+            self.file_contents = []
 
-        self.file_specs = []
-        for content in range(7, len(file_contents)):
-            self.file_specs.append(file_contents[content].split(","))
+            for x in file:
+                self.file_contents.append(x)
 
-        self.sensor_num[1] = (int(file_desc[2][1]))
-        pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
-        pcba_display.setFont(self.font(20, 45, True))
-        self.scan_gridLayout.addWidget(pcba_display, 0, 0)
+            # this loop splits info into individual list
+            file_desc = []
+            for descript_cont in range(1, 7):
+                file_desc.append(self.file_contents[descript_cont].split(","))
 
-        desc_lbl = []
-        desc_lbl.append(QLabel(file_desc[0][0]))
-        desc_lbl.append(QLabel(file_desc[0][1]))
-        desc_lbl.append(QLabel(file_desc[1][0]))
-        desc_lbl.append(QLabel(file_desc[1][1]))
-        desc_lbl.append(QLabel(file_desc[2][0]))
-        desc_lbl.append(QLabel(file_desc[2][1]))
-        desc_lbl.append(QLabel(file_desc[3][0]))
-        desc_lbl.append(QLabel(file_desc[3][1]))
-        desc_lbl.append(QLabel(file_desc[4][0]))
-        desc_lbl.append(QLabel(file_desc[4][1]))
-        desc_lbl.append(QLabel(file_desc[5][0]))
-        desc_lbl.append(QLabel(file_desc[5][1]))
+            self.file_specs = []
+            for content in range(7, len(self.file_contents)):
+                self.file_specs.append(self.file_contents[content].split(","))
 
-        desc_lbl[0].setFont(self.font(12, 20, True))
-        desc_lbl[2].setFont(self.font(12, 20, True))
-        desc_lbl[4].setFont(self.font(12, 20, True))
-        desc_lbl[6].setFont(self.font(12, 20, True))
-        desc_lbl[8].setFont(self.font(12, 20, True))
-        desc_lbl[10].setFont(self.font(12, 20, True))
-        desc_lbl[11].setTextFormat(Qt.AutoText)
+            self.sensor_num[1] = (int(file_desc[2][1]))
+            pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
+            pcba_display.setFont(self.font(20, 45, True))
+            self.scan_gridLayout.addWidget(pcba_display, 0, 0)
 
-        comp_lbl = []
-        mold_lbl = []
-        section_lbl = []
-        cable_lbl = []
-        addi = 0
-        # this for loop makes a label list based on the previous file_spec info
-        for lbl in self.file_specs:
-            comp_lbl.append(QLabel(self.file_specs[addi][0]))
-            mold_lbl.append(QLabel(self.file_specs[addi][1]))
-            section_lbl.append(QLabel(self.file_specs[addi][2]))
-            cable_lbl.append(QLabel(self.file_specs[addi][3]))
-            addi += 1
+            desc_lbl = []
+            desc_lbl.append(QLabel(file_desc[0][0]))
+            desc_lbl.append(QLabel(file_desc[0][1]))
+            desc_lbl.append(QLabel(file_desc[1][0]))
+            desc_lbl.append(QLabel(file_desc[1][1]))
+            desc_lbl.append(QLabel(file_desc[2][0]))
+            desc_lbl.append(QLabel(file_desc[2][1]))
+            desc_lbl.append(QLabel(file_desc[3][0]))
+            desc_lbl.append(QLabel(file_desc[3][1]))
+            desc_lbl.append(QLabel(file_desc[4][0]))
+            desc_lbl.append(QLabel(file_desc[4][1]))
+            desc_lbl.append(QLabel(file_desc[5][0]))
+            desc_lbl.append(QLabel(file_desc[5][1]))
 
-        comp_lbl[0].setFont(self.font(20, 20, True))
-        mold_lbl[0].setFont(self.font(20, 20, True))
-        section_lbl[0].setFont(self.font(20, 20, True))
-        cable_lbl[0].setFont(self.font(20, 20, True))
+            desc_lbl[0].setFont(self.font(12, 20, True))
+            desc_lbl[2].setFont(self.font(12, 20, True))
+            desc_lbl[4].setFont(self.font(12, 20, True))
+            desc_lbl[6].setFont(self.font(12, 20, True))
+            desc_lbl[8].setFont(self.font(12, 20, True))
+            desc_lbl[10].setFont(self.font(12, 20, True))
+            desc_lbl[11].setTextFormat(Qt.AutoText)
 
-        self.frame_group = QGroupBox()
-        frame_grid = QGridLayout()
+            self.file_description = file_desc.copy()
+            comp_lbl = []
+            mold_lbl = []
+            section_lbl = []
+            cable_lbl = []
+            addi = 0
+            # this for loop makes a label list based on the previous file_spec info
+            for lbl in self.file_specs:
+                comp_lbl.append(QLabel(self.file_specs[addi][0]))
+                mold_lbl.append(QLabel(self.file_specs[addi][1]))
+                section_lbl.append(QLabel(self.file_specs[addi][2]))
+                cable_lbl.append(QLabel(self.file_specs[addi][3]))
+                addi += 1
 
-        self.frame_group.setLayout(frame_grid)
+            comp_lbl[0].setFont(self.font(20, 20, True))
+            mold_lbl[0].setFont(self.font(20, 20, True))
+            section_lbl[0].setFont(self.font(20, 20, True))
+            cable_lbl[0].setFont(self.font(20, 20, True))
 
-        self.frame_1 = QtWidgets.QFrame()
-        self.frame_2 = QtWidgets.QFrame()
-        self.frame_3 = QtWidgets.QFrame()
-        self.frame_4 = QtWidgets.QFrame()
+            self.frame_group = QGroupBox()
+            frame_grid = QGridLayout()
 
-        frame_1_Grid = self.grid(self.frame_1, 0)
-        frame_2_Grid = self.grid(self.frame_2, 1)
-        frame_3_Grid = self.grid(self.frame_3, 1)
-        frame_4_Grid = self.grid(self.frame_4, 1)
+            self.frame_group.setLayout(frame_grid)
 
-        self.frame_1.setLayout(frame_1_Grid)
-        self.frame_2.setLayout(frame_2_Grid)
-        self.frame_3.setLayout(frame_3_Grid)
-        self.frame_4.setLayout(frame_4_Grid)
+            self.frame_1 = QtWidgets.QFrame()
+            self.frame_2 = QtWidgets.QFrame()
+            self.frame_3 = QtWidgets.QFrame()
+            self.frame_4 = QtWidgets.QFrame()
 
-        frame_grid.addWidget(self.frame_1, 0, 0)
-        frame_grid.addWidget(self.frame_2, 0, 2)
-        frame_grid.addWidget(self.frame_3, 0, 4)
-        frame_grid.addWidget(self.frame_4, 0, 6)
+            frame_1_Grid = self.grid(self.frame_1, 0)
+            frame_2_Grid = self.grid(self.frame_2, 1)
+            frame_3_Grid = self.grid(self.frame_3, 1)
+            frame_4_Grid = self.grid(self.frame_4, 1)
 
-        desc_layout = QGridLayout()
-        desc_layout.addWidget(desc_lbl[0], 0, 0)
-        desc_layout.addWidget(desc_lbl[1], 0, 1)
-        desc_layout.addWidget(desc_lbl[2], 1, 0)
-        desc_layout.addWidget(desc_lbl[3], 1, 1)
-        desc_layout.addWidget(desc_lbl[4], 2, 0)
-        desc_layout.addWidget(desc_lbl[5], 2, 1)
-        desc_layout.addWidget(desc_lbl[6], 3, 0)
-        desc_layout.addWidget(desc_lbl[7], 3, 1)
-        desc_layout.addWidget(desc_lbl[8], 4, 0)
-        desc_layout.addWidget(desc_lbl[9], 4, 1)
-        desc_layout.addWidget(desc_lbl[10], 5, 0)
-        desc_layout.addWidget(desc_lbl[11], 5, 1)
+            self.frame_1.setLayout(frame_1_Grid)
+            self.frame_2.setLayout(frame_2_Grid)
+            self.frame_3.setLayout(frame_3_Grid)
+            self.frame_4.setLayout(frame_4_Grid)
 
-        desc_group = QGroupBox()
-        desc_group.setLayout(desc_layout)
+            frame_grid.addWidget(self.frame_1, 0, 0)
+            frame_grid.addWidget(self.frame_2, 0, 2)
+            frame_grid.addWidget(self.frame_3, 0, 4)
+            frame_grid.addWidget(self.frame_4, 0, 6)
 
-        # content
-        detail_layout = QGridLayout()
-        ran = 1
-        for comp in range(1, len(comp_lbl)):
-            if comp < 33:
-                frame_1_Grid.addWidget(comp_lbl[comp], ran, 0)
-                frame_1_Grid.addWidget(mold_lbl[comp], ran, 2)
-                frame_1_Grid.addWidget(section_lbl[comp], ran, 4)
-                frame_1_Grid.addWidget(cable_lbl[comp], ran, 6)
-                ran += 1
-            elif comp >= 33 and comp < 65:
-                if comp is 33:
-                    ran = 1
-                frame_2_Grid.addWidget(comp_lbl[comp], ran, 0)
-                frame_2_Grid.addWidget(mold_lbl[comp], ran, 2)
-                frame_2_Grid.addWidget(section_lbl[comp], ran, 4)
-                frame_2_Grid.addWidget(cable_lbl[comp], ran, 6)
-                ran += 1
-            elif comp >= 65 and comp < 97:
-                if comp is 65:
-                    ran = 1
-                frame_3_Grid.addWidget(comp_lbl[comp], ran, 0)
-                frame_3_Grid.addWidget(mold_lbl[comp], ran, 2)
-                frame_3_Grid.addWidget(section_lbl[comp], ran, 4)
-                frame_3_Grid.addWidget(cable_lbl[comp], ran, 6)
-                ran += 1
-            elif comp >= 97 and comp < 127:
-                if comp is 97:
-                    ran = 1
-                frame_4_Grid.addWidget(comp_lbl[comp], ran, 0)
-                frame_4_Grid.addWidget(mold_lbl[comp], ran, 2)
-                frame_4_Grid.addWidget(section_lbl[comp], ran, 4)
-                frame_4_Grid.addWidget(cable_lbl[comp], ran, 6)
-                ran += 1
+            desc_layout = QGridLayout()
+            desc_layout.addWidget(desc_lbl[0], 0, 0)
+            desc_layout.addWidget(desc_lbl[1], 0, 1)
+            desc_layout.addWidget(desc_lbl[2], 1, 0)
+            desc_layout.addWidget(desc_lbl[3], 1, 1)
+            desc_layout.addWidget(desc_lbl[4], 2, 0)
+            desc_layout.addWidget(desc_lbl[5], 2, 1)
+            desc_layout.addWidget(desc_lbl[6], 3, 0)
+            desc_layout.addWidget(desc_lbl[7], 3, 1)
+            desc_layout.addWidget(desc_lbl[8], 4, 0)
+            desc_layout.addWidget(desc_lbl[9], 4, 1)
+            desc_layout.addWidget(desc_lbl[10], 5, 0)
+            desc_layout.addWidget(desc_lbl[11], 5, 1)
 
-        self.prep_gridLayout.addWidget(desc_group, 1, 1)
-        self.prep_scrollArea.setWidget(self.frame_group)
+            self.desc_group = QGroupBox()
+            self.desc_group.setLayout(desc_layout)
 
-        file.close()
+            # content
+            detail_layout = QGridLayout()
+            ran = 1
+            for comp in range(1, len(comp_lbl)):
+                if comp < 33:
+                    frame_1_Grid.addWidget(comp_lbl[comp], ran, 0)
+                    frame_1_Grid.addWidget(mold_lbl[comp], ran, 2)
+                    frame_1_Grid.addWidget(section_lbl[comp], ran, 4)
+                    frame_1_Grid.addWidget(cable_lbl[comp], ran, 6)
+                    ran += 1
+                elif comp >= 33 and comp < 65:
+                    if comp is 33:
+                        ran = 1
+                    frame_2_Grid.addWidget(comp_lbl[comp], ran, 0)
+                    frame_2_Grid.addWidget(mold_lbl[comp], ran, 2)
+                    frame_2_Grid.addWidget(section_lbl[comp], ran, 4)
+                    frame_2_Grid.addWidget(cable_lbl[comp], ran, 6)
+                    ran += 1
+                elif comp >= 65 and comp < 97:
+                    if comp is 65:
+                        ran = 1
+                    frame_3_Grid.addWidget(comp_lbl[comp], ran, 0)
+                    frame_3_Grid.addWidget(mold_lbl[comp], ran, 2)
+                    frame_3_Grid.addWidget(section_lbl[comp], ran, 4)
+                    frame_3_Grid.addWidget(cable_lbl[comp], ran, 6)
+                    ran += 1
+                elif comp >= 97 and comp < 127:
+                    if comp is 97:
+                        ran = 1
+                    frame_4_Grid.addWidget(comp_lbl[comp], ran, 0)
+                    frame_4_Grid.addWidget(mold_lbl[comp], ran, 2)
+                    frame_4_Grid.addWidget(section_lbl[comp], ran, 4)
+                    frame_4_Grid.addWidget(cable_lbl[comp], ran, 6)
+                    ran += 1
+
+            self.prep_gridLayout.addWidget(self.desc_group, 1, 1)
+            self.prep_scrollArea.setWidget(self.frame_group)
+
+            self.scan_tab.setEnabled(True)
+            file.close()
+
+        except:
+            error = QMessageBox.critical(self,"Erorr"," Incorrect file. Please insert a .csv extension type", QMessageBox.Ok)
+
+            if error == QMessageBox.Ok:
+                file.close()
+                self.prep_information()
+
 
     def grid(self, frame, boxNum):
 
@@ -605,18 +683,17 @@ class MainUtility(QMainWindow):
     def pcbaImgInfo(self, num, replace):
 
         pcba_frame = QtWidgets.QFrame()
-        pcba_frame.setGeometry(QtCore.QRect(160, 70, 211, 131))
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
         pcba_frame.setLineWidth(46)
 
         pcba_image_lbl = QtWidgets.QLabel(pcba_frame)
-        pcba_image_lbl.setGeometry(QtCore.QRect(0, 30, 125, 45))
+        pcba_image_lbl.setGeometry(QtCore.QRect(35, 30, 125, 45))
         pcba_image_lbl.setPixmap(QtGui.QPixmap("Sensor_PCBA.jpg"))
         pcba_image_lbl.setScaledContents(True)
 
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
-        self.hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 160, 16))
+        self.hex_number_lbl.setGeometry(QtCore.QRect(35, 77, 160, 16))
         self.hex_number_lbl.setFont(self.font(18, 18, True))
         random_hex = rand.randint(0000000000000000, 9999999999999999)
 
@@ -631,7 +708,7 @@ class MainUtility(QMainWindow):
         self.hex_number_lbl.setText(hex_number)
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
-        pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(0, 10, 45, 16))
+        pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 16))
         pcba_right_topCorner_id_lbl.setFont(self.font(12, 75, True))
 
         if self.pcba_counter is 31:
@@ -652,7 +729,7 @@ class MainUtility(QMainWindow):
             self.pcba_counter += 1
 
         self.pcba_orderNum = QLabel(pcba_frame)
-        self.pcba_orderNum.setGeometry(QtCore.QRect(109, 10, 50, 20))
+        self.pcba_orderNum.setGeometry(QtCore.QRect(144, 10, 50, 20))
         self.pcba_orderNum.setFont(self.font(9, 10, True))
 
         self.pcba_imgs.append(self.pcba_orderNum)
@@ -693,6 +770,7 @@ class MainUtility(QMainWindow):
         else:  # left click
             self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
             self.pcba_memory[nextNum - 3].setAutoFillBackground(True)
+            self.pcba_memory.pop()
             self.physical_num -= 1
 
     def palette(self, red, green, blue):
@@ -738,26 +816,42 @@ class MainUtility(QMainWindow):
 
         self.msg_lineEdit.returnPressed.connect(self.sortButtonWarning)
 
+
         x = self.message.exec_()
 
     def sortButtonWarning(self):
+        apple = type(5)
+        print(type(5))
 
-        num = int(self.msg_lineEdit.text())
-        #these two if statements are an error check!
-        if num > self.sensor_num[1] or num < 1:
-            error = QMessageBox.critical(self.message,"Error","Physical number not found please enter again",QMessageBox.Ok)
-            if error == QMessageBox.Ok:
+
+        try:
+            num = int(self.msg_lineEdit.text())
+            # these two if statements are an error check!
+            if num > self.sensor_num[1] or num < 1:
+                error = QMessageBox.critical(self.message, "Error", "Physical number not found please enter again",
+                                             QMessageBox.Ok)
+                if error == QMessageBox.Ok:
+                    self.message.close()
+                    self.boardReplace()
+            else:
+                self.newScan(self.msg_lineEdit.text())
+
+                call = QMessageBox.information(self.message, "Sort Button",
+                                               "Would you like to re-Enable the Sort Button? ",
+                                               QMessageBox.Yes | QMessageBox.No)
+
+                if call == QMessageBox.Yes:
+                    self.yesButton()
+                if call == QMessageBox.No:
+                    self.noButton()
+        except:
+            warning = QMessageBox.critical(self.message,"Error","Please Type in a number with in the boards!",QMessageBox.Ok)
+            if warning == QMessageBox.Ok:
                 self.message.close()
                 self.boardReplace()
-        else:
-            self.newScan(self.msg_lineEdit.text())
 
-            call = QMessageBox.information(self.message,"Sort Button","Would you like to re-Enable the Sort Button? ",QMessageBox.Yes | QMessageBox.No)
 
-            if call == QMessageBox.Yes:
-                self.yesButton()
-            if call == QMessageBox.No:
-                self.noButton()
+
 
     def newScan(self,phy_num):
         scan_new = QMessageBox.information(self.message,"Scan New pcba","Please Scan New PCBA Board",QMessageBox.Ok)
@@ -766,10 +860,6 @@ class MainUtility(QMainWindow):
         hex_number = hex_number[2:]
 
         index = 0
-
-
-
-
         #this loop updates self.pcba_hexList
         for oldHex in self.pcba_hexDict:
             if self.pcba_hexDict[oldHex] is int(phy_num):
@@ -783,7 +873,7 @@ class MainUtility(QMainWindow):
 
     def yesButton(self):
         m = QMessageBox.warning(self.message,"Warning",
-                                   "Are you sure you want to re-Sort?Why dont you give Rodrigo a call? Doing so will re-organize all the boards! ",
+                                   "Are you sure you want to re-Sort? Doing so will re-organize all the boards! ",
                                 QMessageBox.Yes | QMessageBox.No)
         if m == QMessageBox.Yes:
             self.doubleCheck()
@@ -791,6 +881,9 @@ class MainUtility(QMainWindow):
             self.noButton()
 
     def doubleCheck(self):
+        self.pcba_memory[self.physical_num-2].setAutoFillBackground(False)
+        self.pcba_memory.clear()
+        self.physical_num = 0
         self.sort_btn.setEnabled(True)
         self.message.close()
 
@@ -847,15 +940,13 @@ class MainUtility(QMainWindow):
             self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
             c += 1
 
-        info = QLabel("Use 'A' or 'D' to cycle through the pcba boards")
-        info.setFont(self.font(20, 20, True))
-        self.scan_gridLayout.addWidget(info, 0, 2)
-
         self.file_btn.setEnabled(False)
+        self.right_arrow_btn.setEnabled(True)
         self.highlight(self.physical_num, True)
         self.sort_btn.setEnabled(False)
         self.buildDisplay()
         self.final_order.clear()
+        self.build_tab.setEnabled(True)
 
     def Halfsies(self, list, key, size):
         '''This method sorts and puts the given list into the self.order_dict dictionary'''
@@ -884,6 +975,63 @@ class MainUtility(QMainWindow):
             k += 1
             count = 1
             list.remove(hold)
+
+    def test_cable(self):
+        self.program_tab.setEnabled(True)
+
+    def csv(self):
+        final_list = self.file_description + self.file_specs
+        x = 0
+        h = 0
+        with open("DTC-"+final_list[0][1]+"-OUTPUT.csv", 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Description"])
+            for info in final_list:
+                if x is 0:
+                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],"EEPROM id","12678adcb"])
+                elif x is 6:
+                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],final_list[x][3],"sensor id"])
+                elif x >= 8:
+                    writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], self.pcba_hexList[h]])
+                    h += 1
+                else:
+                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],final_list[x][3],"-"])
+                x += 1
+        info = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
+            1] + "-OUTPUT.csv' has been downloaded into your folder ")
+
+        #resetting the list and dictionaries for a new run
+        self.file_btn.setEnabled(True)
+        self.hex_number_lbl.clear()
+        self.pcba_hexList.clear()
+        self.pcba_frame_Highlight.clear()
+        self.hex_lbl_Dict.clear()
+        self.pcba_hexDict.clear()
+        self.hex_lbl_list.clear()
+        self.pcba_counter = 1
+        self.file_contents.clear()
+        self.file_specs.clear()
+        self.sensor_num = [False,0]
+        self.file_description.clear()
+        self.colbCount = 0
+        self.rowCount = 0
+        self.pcba_frame_Dict.clear()
+        self.pcba_memory.clear()
+        self.physical_num = 1
+        self.lsb = -1
+        self.counter = 1
+        self.final_order.clear()
+        self.order_dict.clear()
+        self.pcba_imgs.clear()
+        self.desc_group.deleteLater()
+        self.pcba_groupBox.deleteLater()
+        self.frame_group.deleteLater()
+        self.scan_tab.setEnabled(False)
+        self.build_tab.setEnabled(False)
+        self.program_tab.setEnabled(False)
+        self.initUI()
+
+
 
 
 def showscreen():
