@@ -46,12 +46,13 @@ class MainUtility(QMainWindow):
         self.config_font = QFont(self.system_font, 12)
         self.config_path_font = QFont(self.system_font, 12)
 
-        self.settings = QSettings()  # to be developed later
+        self.settings = QSettings("BeadedStream", "PCBATestUtility")
+        self.settings.setValue("report_file_path","/path/to/report/folder")
 
         self.config = QAction("Settings", self)
         self.config.setShortcut("Ctrl+E")
         self.config.setStatusTip("Program Settings")
-        # self.config.triggered.connect()#(put method)
+        self.config.triggered.connect(self.configuration)#(put method)
 
         self.quit = QAction("Quit", self)
         self.quit.setShortcut("Ctrl+Q")
@@ -104,6 +105,7 @@ class MainUtility(QMainWindow):
         self.lsb = -1
         self.order_dict = {}
         self.final_order = {}
+        self.path_check = False
 
         # self.pcba_gridlayout = QGridLayout()
         # self.pcba_gridlayout.setVerticalSpacing(100)
@@ -163,6 +165,11 @@ class MainUtility(QMainWindow):
         self.logo_img.setScaledContents(True)
         self.logo_img.setObjectName("logo_img")
 
+        self.title_text = QtWidgets.QLabel(self.main_scroll_window)
+        self.title_text.setGeometry(QtCore.QRect(650,50,600,600))
+        self.title_text.setText("Cable Factory APP II")
+        self.title_text.setFont(self.font(200,200,True))
+
         self.test_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.test_btn.setGeometry(QtCore.QRect(895, 400, 180, 160))
         self.test_btn.setText("Test")
@@ -210,12 +217,6 @@ class MainUtility(QMainWindow):
         if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
             self.pcbaImgInfo(self.counter, 0)
             self.counter += 1
-
-        #if event.key() == Qt.Key_D and self.physical_num is not self.sensor_num[1] + 1:
-            #self.highlight(self.physical_num, True)
-
-        # if event.key() == Qt.Key_A and self.physical_num is not 2:
-        #     self.highlight(self.physical_num, False)
 
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
@@ -370,6 +371,7 @@ class MainUtility(QMainWindow):
 
         final_test_btn = QPushButton()
         final_test_btn.setText("Final Test")
+        #final_test_btn.clicked.connect(self.set_report_location)
         final_test_btn.clicked.connect(self.csv)
 
         self.program_gridLayout.addWidget(eeprom_btn, 0, 0)
@@ -408,6 +410,79 @@ class MainUtility(QMainWindow):
 
         if self.physical_num is not 1:
             self.highlight(self.physical_num, False)
+
+
+    def configuration(self):
+        FILE_BTN_WIDTH = 30
+        self.path_check = True
+
+        self.settings_widget = QDialog(self)
+
+        self.report_btn = QPushButton("[...]")
+        self.report_btn.setFixedWidth(FILE_BTN_WIDTH)
+        self.report_btn.clicked.connect(self.set_report_location)
+        self.report_lbl = QLabel("Set report save location: ")
+        self.report_lbl.setFont(self.config_font)
+        self.report_path_lbl = QLabel(self.settings.value("report_file_path"))
+        self.report_path_lbl.setFont(self.config_path_font)
+        self.report_path_lbl.setStyleSheet("QLabel {color: blue}")
+
+
+        save_loc_layout = QGridLayout()
+        save_loc_layout.addWidget(self.report_lbl, 0, 0)
+        save_loc_layout.addWidget(self.report_btn, 0, 1)
+        save_loc_layout.addWidget(self.report_path_lbl, 1, 0)
+
+        save_loc_group = QGroupBox("Save Locations")
+        save_loc_group.setLayout(save_loc_layout)
+
+        apply_btn = QPushButton("Apply Settings")
+        apply_btn.clicked.connect(self.apply_settings)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.cancel_settings)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(cancel_btn)
+        button_layout.addStretch()
+        button_layout.addWidget(apply_btn)
+
+        hbox_bottom = QHBoxLayout()
+        hbox_bottom.addStretch()
+        hbox_bottom.addWidget(save_loc_group)
+        hbox_bottom.addStretch()
+
+        grid = QGridLayout()
+        grid.addLayout(hbox_bottom, 0, 0)
+        grid.addLayout(button_layout, 1, 0)
+        grid.setHorizontalSpacing(100)
+
+        self.settings_widget.setLayout(grid)
+        self.settings_widget.setWindowTitle("Cable Manufacturing App 2")
+        self.settings_widget.show()
+
+    def apply_settings(self):
+        """Read user inputs and apply settings."""
+        self.settings.setValue("report_file_path", self.report_path_lbl.text())
+
+
+        QMessageBox.information(self.settings_widget, "Information",
+                                "Settings applied!")
+
+        self.settings_widget.close()
+
+    def set_report_location(self):
+        """Opens file dialog for setting the save location for the report."""
+
+        self.report_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select report save location."
+        )
+        if self.path_check is True:
+            self.report_path_lbl.setText(self.report_dir)
+
+    def cancel_settings(self):
+        """Close the settings widget without applying changes."""
+        self.settings_widget.close()
     def calibrateScreen(self):
         central_widget = QWidget()
 
@@ -979,11 +1054,19 @@ class MainUtility(QMainWindow):
     def test_cable(self):
         self.program_tab.setEnabled(True)
 
+
+
     def csv(self):
+        '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
+        if self.path_check is False:
+            pathway = QMessageBox.warning(self,"Select Path","Please select a directory to load your csv document",QMessageBox.Ok)
+            if pathway == QMessageBox.Ok:
+                self.set_report_location()
+
         final_list = self.file_description + self.file_specs
         x = 0
         h = 0
-        with open("DTC-"+final_list[0][1]+"-OUTPUT.csv", 'w', newline='') as file:
+        with open(self.report_dir+"/DTC-"+final_list[0][1]+"-OUTPUT.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["Description"])
             for info in final_list:
@@ -998,7 +1081,7 @@ class MainUtility(QMainWindow):
                     writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],final_list[x][3],"-"])
                 x += 1
         info = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
-            1] + "-OUTPUT.csv' has been downloaded into your folder ")
+            1] + "-OUTPUT.csv' has been downloaded into your folder "+ self.report_dir)
 
         #resetting the list and dictionaries for a new run
         self.file_btn.setEnabled(True)
@@ -1029,9 +1112,10 @@ class MainUtility(QMainWindow):
         self.scan_tab.setEnabled(False)
         self.build_tab.setEnabled(False)
         self.program_tab.setEnabled(False)
+        self.report_dir = ""
+        self.path_check = False
+        self.settings.setValue("report_file_path","/path/to/report/folder")
         self.initUI()
-
-
 
 
 def showscreen():
