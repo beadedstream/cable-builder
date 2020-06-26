@@ -4,13 +4,12 @@ import csv
 import math
 import random as rand
 # import wizard
-# import serialmanager
+import factory_serial_manager
 # import model
 # import report
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent, Qt
-
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
@@ -46,13 +45,20 @@ class MainUtility(QMainWindow):
         self.config_font = QFont(self.system_font, 12)
         self.config_path_font = QFont(self.system_font, 12)
 
+        self.sm = factory_serial_manager.SerialManager()
+        self.serial_thread = QThread()  # check later if the thread becomes a problem when you reset the program
+        self.sm.moveToThread(self.serial_thread)
+        self.serial_thread.start()
+
+        self.sm.port_unavailable_signal.connect(self.port_unavailable)
+
         self.settings = QSettings("BeadedStream", "PCBATestUtility")
-        self.settings.setValue("report_file_path","/path/to/report/folder")
+        self.settings.setValue("report_file_path", "/path/to/report/folder")
 
         self.config = QAction("Settings", self)
         self.config.setShortcut("Ctrl+E")
         self.config.setStatusTip("Program Settings")
-        self.config.triggered.connect(self.configuration)#(put method)
+        self.config.triggered.connect(self.configuration)  # (put method)
 
         self.quit = QAction("Quit", self)
         self.quit.setShortcut("Ctrl+Q")
@@ -79,19 +85,20 @@ class MainUtility(QMainWindow):
         self.serial_menu.installEventFilter(self)
         self.ports_menu = QMenu("&Ports", self)
         self.serial_menu.addMenu(self.ports_menu)
-        # self.ports_menu.aboutToShow.connect(self.populate_ports)
+        self.ports_menu.aboutToShow.connect(self.populate_ports)
         self.ports_group = QActionGroup(self)
-        # self.ports_group.triggered.connect(self.connect_port)
+        self.ports_group.triggered.connect(self.connect_port)
 
         self.help_menu = self.menubar.addMenu("&Help")
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
-        #these are variables and list used throught the entire program
+        # these are variables and list used throught the entire program
         self.pcba_imgs = []
         self.pcba_frame_Dict = {}
         self.pcba_memory = []
         self.pcba_frame_Highlight = []
+        self.hex_number = []
         self.pcba_hexDict = {}
         self.pcba_hexList = []
         self.hex_lbl_Dict = {}
@@ -103,32 +110,11 @@ class MainUtility(QMainWindow):
         self.sensor_num = [False, 0]
         self.physical_num = 1
         self.lsb = -1
+        self.pcba_current_number = 1
         self.order_dict = {}
         self.final_order = {}
         self.path_check = False
-
-        # self.pcba_gridlayout = QGridLayout()
-        # self.pcba_gridlayout.setVerticalSpacing(100)
-        # self.pcba_gridlayout.setHorizontalSpacing(200)
-        # self.pcba_gridlayout.setColumnStretch(7, 1)
-        # self.pcba_gridlayout.setRowStretch(22, 1)
-        #
-        # self.pcba_groupBox = QGroupBox()
-        # self.pcba_groupBox.setFlat(True)
-        # self.pcba_groupBox.setLayout(self.pcba_gridlayout)
-
         self.initUI()
-        # self.center()
-
-    def center(self):
-        """Centers the application on the screen the mouse pointer is
-                currently on."""
-        frameGm = self.frameGeometry()
-        screen = QApplication.desktop().screenNumber(
-            QApplication.desktop().cursor().pos())
-        centerPoint = QApplication.desktop().screenGeometry(screen).center()
-        frameGm.moveCenter(centerPoint)
-        self.move(frameGm.topLeft())
 
     def resource_path(self, relative_path):
         """Gets the path of the application relative root path to allow us
@@ -166,9 +152,14 @@ class MainUtility(QMainWindow):
         self.logo_img.setObjectName("logo_img")
 
         self.title_text = QtWidgets.QLabel(self.main_scroll_window)
-        self.title_text.setGeometry(QtCore.QRect(650,50,600,600))
+        self.title_text.setGeometry(QtCore.QRect(580, 50, 600, 600))
         self.title_text.setText("Cable Factory APP II")
-        self.title_text.setFont(self.font(200,200,True))
+
+        font = QFont()
+        font.setPointSize(25)
+        font.setFamily("Times New Roman")
+        font.setBold(True)
+        self.title_text.setFont(font)
 
         self.test_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.test_btn.setGeometry(QtCore.QRect(895, 400, 180, 160))
@@ -206,17 +197,17 @@ class MainUtility(QMainWindow):
         self.pcba_groupBox.setFlat(True)
         self.pcba_groupBox.setLayout(self.pcba_gridlayout)
 
-    def keyPressEvent(self, event):
-        key = event.key()
-        print(event.key())
-        if key ==QtCore.Qt.Key_Left:
-            print("Hello left")
-        elif key ==  QtCore.Qt.Key_Right:
-            print("Hello Right")
-
-        if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
-            self.pcbaImgInfo(self.counter, 0)
-            self.counter += 1
+    # def keyPressEvent(self, event):
+    #     key = event.key()
+    #     print(event.key())
+    #     if key == QtCore.Qt.Key_Left:
+    #         print("Hello left")
+    #     elif key == QtCore.Qt.Key_Right:
+    #         print("Hello Right")
+    #
+    #     if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
+    #         self.pcbaImgInfo(self.counter, 0)
+    #         self.counter += 1
 
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
@@ -274,6 +265,10 @@ class MainUtility(QMainWindow):
 
         self.scan_gridLayout.addWidget(self.scan_scrollArea, 1, 1, 11, 11)
 
+        self.current_pcba = QtWidgets.QLabel()
+        self.current_pcba.setFont(self.font(20, 20, True))
+        self.scan_gridLayout.addWidget(self.current_pcba, 4, 0)
+
         self.sort_btn = QPushButton()
         self.sort_btn.setText("Sort")
         self.sort_btn.setGeometry(10, 10, 110, 75)
@@ -291,8 +286,12 @@ class MainUtility(QMainWindow):
         right_arrow_icon.addPixmap(QtGui.QPixmap("right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         arrow_frame = QtWidgets.QFrame()
-        arrow_grid =QGridLayout()
+        arrow_grid = QGridLayout()
         arrow_frame.setLayout(arrow_grid)
+
+        self.start_button = QtWidgets.QPushButton()
+        self.start_button.setText("Start Scan")
+        self.start_button.clicked.connect(self.pcbaImgScan)
 
         self.left_arrow_btn = QtWidgets.QPushButton()
         self.left_arrow_btn.setIcon(left_arrow_icon)
@@ -302,17 +301,17 @@ class MainUtility(QMainWindow):
 
         self.right_arrow_btn = QtWidgets.QPushButton()
         self.right_arrow_btn.setIcon(right_arrow_icon)
-        self.right_arrow_btn.setIconSize(QtCore.QSize(25,20))
+        self.right_arrow_btn.setIconSize(QtCore.QSize(25, 20))
         self.right_arrow_btn.clicked.connect(self.right_check)
         self.right_arrow_btn.setEnabled(False)
-
 
         arrow_grid.addWidget(self.left_arrow_btn, 0, 0)
         arrow_grid.addWidget(self.right_arrow_btn, 0, 1)
 
+        self.scan_gridLayout.addWidget(self.start_button,0,0)
         self.scan_gridLayout.addWidget(self.sort_btn, 1, 0)
         self.scan_gridLayout.addWidget(self.replace_btn, 2, 0)
-        self.scan_gridLayout.addWidget(arrow_frame,3,0)
+        self.scan_gridLayout.addWidget(arrow_frame, 3, 0)
 
         self.scan_tab.setLayout(self.scan_gridLayout)
 
@@ -371,7 +370,7 @@ class MainUtility(QMainWindow):
 
         final_test_btn = QPushButton()
         final_test_btn.setText("Final Test")
-        #final_test_btn.clicked.connect(self.set_report_location)
+        # final_test_btn.clicked.connect(self.set_report_location)
         final_test_btn.clicked.connect(self.csv)
 
         self.program_gridLayout.addWidget(eeprom_btn, 0, 0)
@@ -379,7 +378,6 @@ class MainUtility(QMainWindow):
         self.program_gridLayout.addWidget(final_test_btn, 2, 0)
 
         # inputting of widgets
-
         self.four_tab_window.addTab(self.prep_tab, "")
         self.four_tab_window.addTab(self.scan_tab, "")
         self.four_tab_window.addTab(self.build_tab, "")
@@ -393,15 +391,18 @@ class MainUtility(QMainWindow):
         self.setCentralWidget(self.build_central_widget)
 
     def right_check(self):
+        self.pcba_current_number += 1
         if self.physical_num > 1:
             self.left_arrow_btn.setEnabled(True)
-            #locks button if it reaches the end
+            # locks button if it reaches the end
         if self.physical_num is self.sensor_num[1]:
             self.right_arrow_btn.setEnabled(False)
 
         if self.physical_num is not self.sensor_num[1] + 1:
             self.highlight(self.physical_num, True)
+
     def left_check(self):
+        self.pcba_current_number -= 1
         if self.physical_num < self.sensor_num[1] + 2:
             self.right_arrow_btn.setEnabled(True)
 
@@ -410,7 +411,6 @@ class MainUtility(QMainWindow):
 
         if self.physical_num is not 1:
             self.highlight(self.physical_num, False)
-
 
     def configuration(self):
         FILE_BTN_WIDTH = 30
@@ -426,7 +426,6 @@ class MainUtility(QMainWindow):
         self.report_path_lbl = QLabel(self.settings.value("report_file_path"))
         self.report_path_lbl.setFont(self.config_path_font)
         self.report_path_lbl.setStyleSheet("QLabel {color: blue}")
-
 
         save_loc_layout = QGridLayout()
         save_loc_layout.addWidget(self.report_lbl, 0, 0)
@@ -464,7 +463,6 @@ class MainUtility(QMainWindow):
         """Read user inputs and apply settings."""
         self.settings.setValue("report_file_path", self.report_path_lbl.text())
 
-
         QMessageBox.information(self.settings_widget, "Information",
                                 "Settings applied!")
 
@@ -483,6 +481,7 @@ class MainUtility(QMainWindow):
     def cancel_settings(self):
         """Close the settings widget without applying changes."""
         self.settings_widget.close()
+
     def calibrateScreen(self):
         central_widget = QWidget()
 
@@ -557,13 +556,11 @@ class MainUtility(QMainWindow):
         """ Grabs the file path for the Select File"""
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
-                                                  "Excel (*.csv *.xlsx *.tsv)")#;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
+                                                      "Excel (*.csv *.xlsx *.tsv)")  # ;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
             if (select_file[0] is ''):
                 return
             else:
                 file = open(select_file[0], "r")
-
-
 
             self.file_contents = []
 
@@ -582,7 +579,7 @@ class MainUtility(QMainWindow):
             self.sensor_num[1] = (int(file_desc[2][1]))
             pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
             pcba_display.setFont(self.font(20, 45, True))
-            self.scan_gridLayout.addWidget(pcba_display, 0, 0)
+            self.scan_gridLayout.addWidget(pcba_display, 4, 0)
 
             desc_lbl = []
             desc_lbl.append(QLabel(file_desc[0][0]))
@@ -706,16 +703,18 @@ class MainUtility(QMainWindow):
             self.prep_scrollArea.setWidget(self.frame_group)
 
             self.scan_tab.setEnabled(True)
+
             file.close()
 
         except:
-            error = QMessageBox.critical(self,"Erorr"," Incorrect file. Please insert a .csv extension type", QMessageBox.Ok)
+            error = QMessageBox.critical(self, "Erorr", " Incorrect file. Please insert a .csv extension type",
+                                         QMessageBox.Ok)
 
             if error == QMessageBox.Ok:
                 file.close()
                 self.prep_information()
 
-
+        #self.pcbaImgScan()
     def grid(self, frame, boxNum):
 
         component = QLabel("Component")
@@ -755,7 +754,31 @@ class MainUtility(QMainWindow):
         font.setWeight(weigth)
         return font
 
-    def pcbaImgInfo(self, num, replace):
+    def pcbaImgScan(self):
+        if self.sm.is_connected:
+
+            before = {}
+            while self.counter is not self.sensor_num[1]:
+                data = self.sm.pcba_sensor()
+                if True in data:
+                    info = data.get(True)
+                    new_info = info.replace(" ", "")
+                    temp = int(new_info,16)
+                    hex_num = hex(temp)
+
+                    if before.get(True) != data.get(True):
+                        self.hex_number.append(hex_num)
+                        self.pcbaImgInfo(self.counter,temp,0)
+                        self.counter += 1
+                        before = data
+
+
+        else:
+            warn = QMessageBox.critical(self, "Please Connect",
+                                            "Please assure that your COM PORT is shown in the 'Serial' tab", QMessageBox.Ok)
+            if warn == QMessageBox.Ok:
+                self.sm.pcba_sensor()
+    def pcbaImgInfo(self, num,hex, replace):
 
         pcba_frame = QtWidgets.QFrame()
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -770,17 +793,14 @@ class MainUtility(QMainWindow):
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
         self.hex_number_lbl.setGeometry(QtCore.QRect(35, 77, 160, 16))
         self.hex_number_lbl.setFont(self.font(18, 18, True))
-        random_hex = rand.randint(0000000000000000, 9999999999999999)
 
-        self.pcba_hexList.append(random_hex)
-        self.pcba_frame_Highlight.append(random_hex)
-        self.pcba_hexDict[random_hex] = self.counter
+        self.pcba_hexList.append(hex)
+        self.pcba_frame_Highlight.append(hex)
+        self.pcba_hexDict[hex] = self.counter
         self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
         self.hex_lbl_list.append(self.hex_number_lbl)
 
-        hex_number = hex(random_hex)
-        hex_number = hex_number[2:]
-        self.hex_number_lbl.setText(hex_number)
+        self.hex_number_lbl.setText(self.hex_number[num-1])
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 16))
@@ -831,7 +851,10 @@ class MainUtility(QMainWindow):
 
     def highlight(self, nextNum, rightClick):
 
+        self.current_pcba.setText(str(self.pcba_current_number) + " out of " + str(self.sensor_num[1]))
+
         if (rightClick):
+
             for key in self.pcba_frame_Dict:
                 if nextNum is self.pcba_frame_Dict.get(key):
                     key.setAutoFillBackground(True)
@@ -841,6 +864,7 @@ class MainUtility(QMainWindow):
 
             if nextNum > 1:
                 self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
+
             self.physical_num += 1
         else:  # left click
             self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
@@ -891,13 +915,11 @@ class MainUtility(QMainWindow):
 
         self.msg_lineEdit.returnPressed.connect(self.sortButtonWarning)
 
-
         x = self.message.exec_()
 
     def sortButtonWarning(self):
         apple = type(5)
         print(type(5))
-
 
         try:
             num = int(self.msg_lineEdit.text())
@@ -920,35 +942,33 @@ class MainUtility(QMainWindow):
                 if call == QMessageBox.No:
                     self.noButton()
         except:
-            warning = QMessageBox.critical(self.message,"Error","Please Type in a number with in the boards!",QMessageBox.Ok)
+            warning = QMessageBox.critical(self.message, "Error", "Please Type in a number with in the boards!",
+                                           QMessageBox.Ok)
             if warning == QMessageBox.Ok:
                 self.message.close()
                 self.boardReplace()
 
-
-
-
-    def newScan(self,phy_num):
-        scan_new = QMessageBox.information(self.message,"Scan New pcba","Please Scan New PCBA Board",QMessageBox.Ok)
+    def newScan(self, phy_num):
+        scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
         random_hex = rand.randint(0000000000000000, 9999999999999999)
         hex_number = hex(random_hex)
         hex_number = hex_number[2:]
 
         index = 0
-        #this loop updates self.pcba_hexList
+        # this loop updates self.pcba_hexList
         for oldHex in self.pcba_hexDict:
             if self.pcba_hexDict[oldHex] is int(phy_num):
                 index = self.pcba_hexList.index(oldHex)
                 self.pcba_hexList.remove(oldHex)
-                self.pcba_hexList.insert(index,random_hex)
+                self.pcba_hexList.insert(index, random_hex)
 
         for key in self.hex_lbl_Dict:
             if self.hex_lbl_Dict.get(key) is int(phy_num):
                 key.setText(hex_number)
 
     def yesButton(self):
-        m = QMessageBox.warning(self.message,"Warning",
-                                   "Are you sure you want to re-Sort? Doing so will re-organize all the boards! ",
+        m = QMessageBox.warning(self.message, "Warning",
+                                "Are you sure you want to re-Sort? Doing so will re-organize all the boards! ",
                                 QMessageBox.Yes | QMessageBox.No)
         if m == QMessageBox.Yes:
             self.doubleCheck()
@@ -956,7 +976,7 @@ class MainUtility(QMainWindow):
             self.noButton()
 
     def doubleCheck(self):
-        self.pcba_memory[self.physical_num-2].setAutoFillBackground(False)
+        self.pcba_memory[self.physical_num - 2].setAutoFillBackground(False)
         self.pcba_memory.clear()
         self.physical_num = 0
         self.sort_btn.setEnabled(True)
@@ -994,7 +1014,8 @@ class MainUtility(QMainWindow):
 
         for order in self.final_order:  # order grabs the binary string
             for place in self.order_dict:  # place grabs the physical location
-                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
+                if order is self.order_dict[
+                    place]:  # searches throught the binary strings in order dict and puts them in final order
                     self.final_order[order] = place
                     self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
                     key_count += 1
@@ -1054,36 +1075,37 @@ class MainUtility(QMainWindow):
     def test_cable(self):
         self.program_tab.setEnabled(True)
 
-
-
     def csv(self):
         '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
         if self.path_check is False:
-            pathway = QMessageBox.warning(self,"Select Path","Please select a directory to load your csv document",QMessageBox.Ok)
+            pathway = QMessageBox.warning(self, "Select Path", "Please select a directory to load your csv document",
+                                          QMessageBox.Ok)
             if pathway == QMessageBox.Ok:
                 self.set_report_location()
 
         final_list = self.file_description + self.file_specs
         x = 0
         h = 0
-        with open(self.report_dir+"/DTC-"+final_list[0][1]+"-OUTPUT.csv", 'w', newline='') as file:
+        with open(self.report_dir + "/DTC-" + final_list[0][1] + "-OUTPUT.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["Description"])
             for info in final_list:
                 if x is 0:
-                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],"EEPROM id","12678adcb"])
+                    writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], "EEPROM id", "12678adcb"])
                 elif x is 6:
-                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],final_list[x][3],"sensor id"])
+                    writer.writerow(
+                        [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "sensor id"])
                 elif x >= 8:
-                    writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], self.pcba_hexList[h]])
+                    writer.writerow(
+                        [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], self.pcba_hexList[h]])
                     h += 1
                 else:
-                    writer.writerow([final_list[x][0],final_list[x][1],final_list[x][2],final_list[x][3],"-"])
+                    writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "-"])
                 x += 1
         info = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
-            1] + "-OUTPUT.csv' has been downloaded into your folder "+ self.report_dir)
+            1] + "-OUTPUT.csv' has been downloaded into your folder " + self.report_dir)
 
-        #resetting the list and dictionaries for a new run
+        # resetting the list and dictionaries for a new run
         self.file_btn.setEnabled(True)
         self.hex_number_lbl.clear()
         self.pcba_hexList.clear()
@@ -1094,7 +1116,7 @@ class MainUtility(QMainWindow):
         self.pcba_counter = 1
         self.file_contents.clear()
         self.file_specs.clear()
-        self.sensor_num = [False,0]
+        self.sensor_num = [False, 0]
         self.file_description.clear()
         self.colbCount = 0
         self.rowCount = 0
@@ -1113,9 +1135,64 @@ class MainUtility(QMainWindow):
         self.build_tab.setEnabled(False)
         self.program_tab.setEnabled(False)
         self.report_dir = ""
+        self.pcba_current_number = 1
         self.path_check = False
-        self.settings.setValue("report_file_path","/path/to/report/folder")
+        self.settings.setValue("report_file_path", "/path/to/report/folder")
         self.initUI()
+
+    def populate_ports(self):
+        """Doc string goes here."""
+        ports = factory_serial_manager.SerialManager.scan_ports()
+        self.ports_menu.clear()
+
+        if not ports:
+            self.ports_menu.addAction("None")
+            self.sm.close_port()
+
+        for port in ports:
+            port_description = port.description
+            action = self.ports_menu.addAction(port_description)
+            port_name = port.device
+            if self.sm.is_connected(port_name):
+                action.setCheckable(True)
+                action.setChecked(True)
+            self.ports_group.addAction(action)
+
+    def connect_port(self, action: QAction):
+        """Connects to a COM port by parsing the text from a clicked QAction
+        menu object."""
+
+        p = "COM[0-9]+"
+        m = re.search(p, action.text())
+        if m:
+            port_name = m.group()
+            if (self.sm.is_connected(port_name)):
+                action.setChecked
+            self.sm.open_port(port_name)
+        else:
+            QMessageBox.warning(self, "Warning", "Invalid port selection!")
+
+    def port_unavailable(self):
+        """Displays warning message about unavailable port."""
+        QMessageBox.warning(self, "Warning", "Port unavailable!")
+
+    def closeEvent(self, event):
+        """Override QWidget closeEvent to provide user with confirmation
+        dialog and ensure threads are terminated appropriately."""
+
+        event.accept()
+
+        quit_msg = "Are you sure you want to exit the program?"
+        confirmation = QMessageBox.question(self, 'Message',
+                                            quit_msg, QMessageBox.Yes,
+                                            QMessageBox.No)
+
+        if confirmation == QMessageBox.Yes:
+            self.serial_thread.quit()
+            self.serial_thread.wait()
+            event.accept()
+        else:
+            event.ignore()
 
 
 def showscreen():
