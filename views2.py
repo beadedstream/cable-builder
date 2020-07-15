@@ -1,12 +1,11 @@
+
 import os
 import re
 import csv
 import math
+import time
 import random as rand
-# import wizard
 import factory_serial_manager
-# import model
-# import report
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent, Qt
@@ -31,10 +30,6 @@ ABOUT_TEXT = f"""
              """
 
 
-class InvalidMsgType(Exception):
-    pass
-
-
 class MainUtility(QMainWindow):
 
     def __init__(self):
@@ -46,9 +41,15 @@ class MainUtility(QMainWindow):
         self.config_path_font = QFont(self.system_font, 12)
 
         self.sm = factory_serial_manager.SerialManager()
-        self.serial_thread = QThread()  # check later if the thread becomes a problem when you reset the program
+        self.child = factory_serial_manager.SerialManager()
+        self.serial_thread =  QThread()  # check later if the thread becomes a problem when you reset the program
         self.sm.moveToThread(self.serial_thread)
         self.serial_thread.start()
+
+        self.sm.data_ready.connect(self.buffer)
+        self.sm.call_func.connect(self.sm.pcba_sensor)
+
+
 
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
 
@@ -108,12 +109,17 @@ class MainUtility(QMainWindow):
         self.rowCount = 0
         self.colbCount = 0
         self.sensor_num = [False, 0]
+        self.check =False
         self.physical_num = 1
         self.lsb = -1
         self.pcba_current_number = 1
         self.order_dict = {}
+        self.before = {}
+        self.scan_finished = False
+        self.serial_hex_list = []
         self.final_order = {}
         self.path_check = False
+
         self.initUI()
 
     def resource_path(self, relative_path):
@@ -127,6 +133,7 @@ class MainUtility(QMainWindow):
         """"Sets up the main UI."""
         RIGHT_SPACING = 350
         LINE_EDIT_WIDTH = 200
+        #self.child.practicum()
 
         self.main_central_widget = QWidget()
         # self.main_central_widget.isFullScreen()
@@ -197,18 +204,6 @@ class MainUtility(QMainWindow):
         self.pcba_groupBox.setFlat(True)
         self.pcba_groupBox.setLayout(self.pcba_gridlayout)
 
-    # def keyPressEvent(self, event):
-    #     key = event.key()
-    #     print(event.key())
-    #     if key == QtCore.Qt.Key_Left:
-    #         print("Hello left")
-    #     elif key == QtCore.Qt.Key_Right:
-    #         print("Hello Right")
-    #
-    #     if event.key() == Qt.Key_Space and self.counter is not self.sensor_num[1] + 1:
-    #         self.pcbaImgInfo(self.counter, 0)
-    #         self.counter += 1
-
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
 
@@ -250,7 +245,6 @@ class MainUtility(QMainWindow):
         self.prep_tab.setLayout(self.prep_gridLayout)
 
         # scan tab window
-
         self.scan_tab = QtWidgets.QWidget()
         self.scan_tab.setEnabled(False)
 
@@ -291,7 +285,13 @@ class MainUtility(QMainWindow):
 
         self.start_button = QtWidgets.QPushButton()
         self.start_button.setText("Start Scan")
-        self.start_button.clicked.connect(self.pcbaImgScan)
+        self.start_button.clicked.connect(self.start_scan)
+
+
+
+        #self.sm.scan_signal.connect(self.scan_board)
+        # self.start_button.clicked.connect(self.scan_board)
+        # if self.start_button.clicked():
 
         self.left_arrow_btn = QtWidgets.QPushButton()
         self.left_arrow_btn.setIcon(left_arrow_icon)
@@ -308,7 +308,7 @@ class MainUtility(QMainWindow):
         arrow_grid.addWidget(self.left_arrow_btn, 0, 0)
         arrow_grid.addWidget(self.right_arrow_btn, 0, 1)
 
-        self.scan_gridLayout.addWidget(self.start_button,0,0)
+        self.scan_gridLayout.addWidget(self.start_button, 0, 0)
         self.scan_gridLayout.addWidget(self.sort_btn, 1, 0)
         self.scan_gridLayout.addWidget(self.replace_btn, 2, 0)
         self.scan_gridLayout.addWidget(arrow_frame, 3, 0)
@@ -331,13 +331,13 @@ class MainUtility(QMainWindow):
         test_btn.setGeometry(10, 10, 110, 75)
         test_btn.clicked.connect(self.test_cable)
 
-        para_Pwr_btn = QPushButton()
-        para_Pwr_btn.setText("Parasitic Power Test")
-        para_Pwr_btn.setGeometry(10, 10, 110, 75)
+        parasidic_Pwr_btn = QPushButton()
+        parasidic_Pwr_btn.setText("Parasitic Power Test")
+        parasidic_Pwr_btn.setGeometry(10, 10, 110, 75)
         # para_Pwr_btn.clicked.connect(self.sort)
 
         self.build_gridLayout.addWidget(test_btn, 0, 0)
-        self.build_gridLayout.addWidget(para_Pwr_btn, 1, 0)
+        self.build_gridLayout.addWidget(parasidic_Pwr_btn, 1, 0)
 
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
         self.build_tab.setLayout(self.build_gridLayout)
@@ -400,6 +400,7 @@ class MainUtility(QMainWindow):
 
         if self.physical_num is not self.sensor_num[1] + 1:
             self.highlight(self.physical_num, True)
+
 
     def left_check(self):
         self.pcba_current_number -= 1
@@ -579,7 +580,7 @@ class MainUtility(QMainWindow):
             self.sensor_num[1] = (int(file_desc[2][1]))
             pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
             pcba_display.setFont(self.font(20, 45, True))
-            self.scan_gridLayout.addWidget(pcba_display, 4, 0)
+            self.scan_gridLayout.addWidget(pcba_display, 5, 0)
 
             desc_lbl = []
             desc_lbl.append(QLabel(file_desc[0][0]))
@@ -703,7 +704,6 @@ class MainUtility(QMainWindow):
             self.prep_scrollArea.setWidget(self.frame_group)
 
             self.scan_tab.setEnabled(True)
-
             file.close()
 
         except:
@@ -714,7 +714,8 @@ class MainUtility(QMainWindow):
                 file.close()
                 self.prep_information()
 
-        #self.pcbaImgScan()
+        # self.pcbaImgScan()
+
     def grid(self, frame, boxNum):
 
         component = QLabel("Component")
@@ -754,32 +755,42 @@ class MainUtility(QMainWindow):
         font.setWeight(weigth)
         return font
 
-    def pcbaImgScan(self):
-        if self.sm.is_connected:
+    def scan_board(self):
+        answer = None
+        help = QMessageBox()
+        help.setVisible(False)
+        self.sm.data_ready.connect(self.buffer)
 
-            before = {}
-            while self.counter is not self.sensor_num[1]:
-                data = self.sm.pcba_sensor()
-                if True in data:
-                    info = data.get(True)
-                    new_info = info.replace(" ", "")
-                    temp = int(new_info,16)
-                    hex_num = hex(temp)
+        while self.counter is not self.sensor_num[1] + 1:
+            while self.check is False or answer is None:
+                self.check = self.sm.check_if_sensor_true()
+                if self.check is True:
+                    answer = self.sm.pcba_sensor(self.hex_number)
+                    #help.show()
+                # if answer is not -1 and answer is not None:
+                    #self.pcbaImgInfo(self.counter, answer)
 
-                    if before.get(True) != data.get(True):
-                        self.hex_number.append(hex_num)
-                        self.pcbaImgInfo(self.counter,temp,0)
-                        self.counter += 1
-                        before = data
+            self.check = False
+            answer = None
+            self.counter += 1
+            if self.counter is self.sensor_num[1] + 1:
+                pop = QMessageBox.information(self, "End of PCBA", "You have scanned the sufficient amount of boards!",
+                                      QMessageBox.Ok)
+                self.start_button.setEnabled(False)
+
+    def start_scan(self):
+        self.sm.total_pcba_num = self.sensor_num[1]
+        self.sm.scan_board()
 
 
-        else:
-            warn = QMessageBox.critical(self, "Please Connect",
-                                            "Please assure that your COM PORT is shown in the 'Serial' tab", QMessageBox.Ok)
-            if warn == QMessageBox.Ok:
-                self.sm.pcba_sensor()
-    def pcbaImgInfo(self, num,hex, replace):
 
+
+    def buffer(self,number,hexadecimal):
+        self.hex_number.append(hexadecimal)
+        print("hex: "+hexadecimal + " number: ",number)
+        self.pcbaImgInfo(number,hexadecimal)
+
+    def pcbaImgInfo(self, num, hexD):
         pcba_frame = QtWidgets.QFrame()
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
@@ -794,13 +805,14 @@ class MainUtility(QMainWindow):
         self.hex_number_lbl.setGeometry(QtCore.QRect(35, 77, 160, 16))
         self.hex_number_lbl.setFont(self.font(18, 18, True))
 
-        self.pcba_hexList.append(hex)
-        self.pcba_frame_Highlight.append(hex)
-        self.pcba_hexDict[hex] = self.counter
+        convert_hex = int(hexD, 16)#this converts the string hex to a 16 bit decimal
+        self.pcba_hexList.append(convert_hex)
+        self.pcba_frame_Highlight.append(hexD)
+        self.pcba_hexDict[hexD] = self.counter
         self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
         self.hex_lbl_list.append(self.hex_number_lbl)
 
-        self.hex_number_lbl.setText(self.hex_number[num-1])
+        self.hex_number_lbl.setText(self.hex_number[num - 1])
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 16))
@@ -848,6 +860,17 @@ class MainUtility(QMainWindow):
         self.colbCount += 1
 
         self.scan_scrollArea.setWidget(self.pcba_groupBox)
+
+
+        print("hello, I made it: ",self.counter," times in here")
+        self.counter += 1
+
+        if self.counter is self.sensor_num[1]+1:
+            pop = QMessageBox.information(self, "End of PCBA",
+                                          "You have scanned the sufficient amount of boards!")
+            self.start_button.setEnabled(False)
+        else:
+            self.sm.scan_board()
 
     def highlight(self, nextNum, rightClick):
 
@@ -1135,13 +1158,18 @@ class MainUtility(QMainWindow):
         self.build_tab.setEnabled(False)
         self.program_tab.setEnabled(False)
         self.report_dir = ""
+        self.hex_number.clear()
         self.pcba_current_number = 1
+        self.error_num = 0
         self.path_check = False
+        self.scan_finished = False
+        self.before.clear()
         self.settings.setValue("report_file_path", "/path/to/report/folder")
         self.initUI()
 
     def populate_ports(self):
         """Doc string goes here."""
+        self.sm.wake_up_call()
         ports = factory_serial_manager.SerialManager.scan_ports()
         self.ports_menu.clear()
 
@@ -1168,6 +1196,7 @@ class MainUtility(QMainWindow):
             port_name = m.group()
             if (self.sm.is_connected(port_name)):
                 action.setChecked
+                self.sm.scan_board()
             self.sm.open_port(port_name)
         else:
             QMessageBox.warning(self, "Warning", "Invalid port selection!")
@@ -1201,6 +1230,8 @@ def showscreen():
     window = MainUtility()
     window.show()
     sys.exit(app.exec_())
+
+
 
 
 if __name__ == "__main__":
