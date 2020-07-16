@@ -14,6 +14,7 @@ class SerialManager(QObject):
     port_unavailable_signal = pyqtSignal()
     no_version = pyqtSignal()
     scan_signal = pyqtSignal(bool)
+    call_func = pyqtSignal()
     finished = pyqtSignal()
 
     def __init__(self):
@@ -22,10 +23,14 @@ class SerialManager(QObject):
                                  parity=serial.PARITY_NONE, rtscts=False,
                                  xonxoff=False, dsrdtr=False, write_timeout=None)
         self.memory = ''
-        self.counter = 0#this counter is not the same as the views file but it does share the same value
+        self.counter = 0 #this counter is not the same as the views file but it does share the same value by -1
         self.new_hexNum = False
         self.page_dialog = QDialog()
+        self.check = False
+        self.total_number_reached =False
+        self.hex_list = []
         self.hex_memory = []
+        self.total_pcba_num = 0
         self.end = b"\r\n>"
 
     def scan_ports():
@@ -46,11 +51,6 @@ class SerialManager(QObject):
                 self.ser.write(command)
                 data = self.ser.read_until(self.end).decode()
 
-                # Debug items pt.2
-                # now = time.time()
-                # print(now - then)
-                # print(data)
-
                 self.data_ready.emit(data)
             except serial.serialutil.SerialException:
                 self.no_port_sel.emit()
@@ -69,9 +69,6 @@ class SerialManager(QObject):
             except:
                 message = QMessageBox.critical(self.page_dialog, "Wake up not possible",
                                                "The board was not able to remain awake")
-        else:
-            connection_error = QMessageBox.critical(self.page_dialog,"Failed to Connect","there was a "
-                                                                                         "")
     @pyqtSlot()
     def scan_again(self,complete_hex_list,total):
         if self.ser.is_open:
@@ -98,11 +95,22 @@ class SerialManager(QObject):
                     return False
             except:
                 wrong = QMessageBox.critical(self.page_dialog,"sensor issue","there was an error in handling the sensor please try again or use a different sensor")
+    @pyqtSlot()
+    def scan_board(self):
+
+        if self.ser.is_open:
+            try:
+                self.call_func.emit()
+                   
+            except:
+                notworking = QMessageBox.critical(self.page_dialog,"Scan Malfunction","The was an error scanning for the pcba")
+                print("failed the scan board")
+        else:
+            connect = QMessageBox.warning(self.page_dialog,"serial port not Connected"," Please connect the serial port in the tab above")
+
 
     @pyqtSlot()
-    def pcba_sensor(self, hex_list):
-
-        result = {}
+    def pcba_sensor(self):
         if self.ser.is_open:
             hex_number = ""
             try:
@@ -122,12 +130,17 @@ class SerialManager(QObject):
                         new_info = hex_number.replace(" ", "")
                         temp = int(new_info, 16)
                         hex_num = hex(temp)
-                        if str(hex_num) in hex_list:  # this is activated if the hex is the same as previously scanne
+                        if str(hex_num) in self.hex_list:  # this is activated if the hex is the same as previously scanne
                             pass
                         else:
                             self.counter += 1
+                            print("pcba info hex: ",hex_num," and count: ",self.counter)
+                            self.hex_list.append(hex_num)
                             self.data_ready.emit(self.counter,hex_num)
-                            return hex_num
+                            if self.counter is self.total_pcba_num:
+                                self.new_hexNum = True
+
+
 
             except serial.serialutil.SerialException:
                 self.no_port_sel.emit()
@@ -140,6 +153,36 @@ class SerialManager(QObject):
             if error == QMessageBox.Ok:
                 self.page_dialog.close()
             return -1
+
+    @pyqtSlot()
+    def board_replace_scan(self):
+        if self.ser.is_open:
+            self.new_hexNum = False
+            hex_number = ""
+            try:
+                while self.new_hexNum is False:
+                    self.flush_buffers()
+                    self.ser.write("temps 2\r\n".encode())
+                    data = self.ser.read_until(self.end).decode()
+                    data_split = data.split("\n")
+                    hex_line = data_split[2]
+                    sensor_num = hex_line[2:3]
+
+                    if sensor_num is not "0" and len(data_split) > 3:
+                        pcba_hex = data_split[3]
+                        hex_number = pcba_hex[5:23]
+                        hex_number = hex_number + " 28"  # family code
+                        new_info = hex_number.replace(" ", "")
+                        temp = int(new_info, 16)
+                        hex_num = hex(temp)
+                        if str(hex_num) in self.hex_list:  # this is activated if the hex is the same as previously scanne
+                            pass
+                        else:
+                            self.hex_list.append(hex_num)
+                            return temp
+            except:
+                print("ahoy maty!")
+
 
     @pyqtSlot(int)
     def sleep(self, interval):
