@@ -133,7 +133,7 @@ class MainUtility(QMainWindow):
         """"Sets up the main UI."""
         RIGHT_SPACING = 350
         LINE_EDIT_WIDTH = 200
-        #self.child.practicum()
+
 
         self.main_central_widget = QWidget()
         # self.main_central_widget.isFullScreen()
@@ -400,7 +400,6 @@ class MainUtility(QMainWindow):
 
         if self.physical_num is not self.sensor_num[1] + 1:
             self.highlight(self.physical_num, True)
-
 
     def left_check(self):
         self.pcba_current_number -= 1
@@ -782,9 +781,6 @@ class MainUtility(QMainWindow):
         self.sm.total_pcba_num = self.sensor_num[1]
         self.sm.scan_board()
 
-
-
-
     def buffer(self,number,hexadecimal):
         self.hex_number.append(hexadecimal)
         print("hex: "+hexadecimal + " number: ",number)
@@ -941,30 +937,26 @@ class MainUtility(QMainWindow):
         x = self.message.exec_()
 
     def sortButtonWarning(self):
-        apple = type(5)
-        print(type(5))
 
-        try:
+         try:
             num = int(self.msg_lineEdit.text())
             # these two if statements are an error check!
             if num > self.sensor_num[1] or num < 1:
-                error = QMessageBox.critical(self.message, "Error", "Physical number not found please enter again",
-                                             QMessageBox.Ok)
+                error = QMessageBox.critical(self.message, "Error", "Physical number not found please enter again", QMessageBox.Ok)
                 if error == QMessageBox.Ok:
                     self.message.close()
                     self.boardReplace()
             else:
                 self.newScan(self.msg_lineEdit.text())
-
                 call = QMessageBox.information(self.message, "Sort Button",
-                                               "Would you like to re-Enable the Sort Button? ",
-                                               QMessageBox.Yes | QMessageBox.No)
+                                           "Would you like to re-Enable the Sort Button? ",
+                                           QMessageBox.Yes | QMessageBox.No)
 
                 if call == QMessageBox.Yes:
                     self.yesButton()
                 if call == QMessageBox.No:
                     self.noButton()
-        except:
+         except:
             warning = QMessageBox.critical(self.message, "Error", "Please Type in a number with in the boards!",
                                            QMessageBox.Ok)
             if warning == QMessageBox.Ok:
@@ -973,21 +965,23 @@ class MainUtility(QMainWindow):
 
     def newScan(self, phy_num):
         scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
-        random_hex = rand.randint(0000000000000000, 9999999999999999)
-        hex_number = hex(random_hex)
-        hex_number = hex_number[2:]
+        if scan_new == QMessageBox.Ok:
+            random_hex = self.sm.board_replace_scan()
+            hex_number = hex(random_hex)
 
         index = 0
         # this loop updates self.pcba_hexList
         for oldHex in self.pcba_hexDict:
             if self.pcba_hexDict[oldHex] is int(phy_num):
-                index = self.pcba_hexList.index(oldHex)
-                self.pcba_hexList.remove(oldHex)
+                temp = int(oldHex,16)
+                index = self.pcba_hexList.index(temp)
+                self.pcba_hexList.remove(temp)
                 self.pcba_hexList.insert(index, random_hex)
 
         for key in self.hex_lbl_Dict:
             if self.hex_lbl_Dict.get(key) is int(phy_num):
                 key.setText(hex_number)
+        self.pcba_current_number = 0
 
     def yesButton(self):
         m = QMessageBox.warning(self.message, "Warning",
