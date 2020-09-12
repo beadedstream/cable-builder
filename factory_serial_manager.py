@@ -73,6 +73,20 @@ class SerialManager(QObject):
                                                "The board was not able to remain awake")
 
     @pyqtSlot()
+    def fluke_read(self):
+        if self.ser.is_open:
+            try:
+                check = self.ser.write("MEAS?".encode())
+                potato = self.ser.read(check).decode()
+                self.sleep(1)
+                fluke_read_sir = self.ser.read_until(self.end).decode()
+
+                # fluke = self.ser.read_until().decode()
+            except:
+                print("failed to read the fluke")
+
+
+    @pyqtSlot()
     def parasidic_test(self):
         self.temps_list = []
         self.error_sensors = {}
@@ -84,15 +98,18 @@ class SerialManager(QObject):
                 print("this is strong-pu 1: ", strong)
 
                 self.ser.write("5v 0\r\n".encode())
-                time.sleep(2)
-                five = self.ser.read_until(self.end).decode()
-                print("the 5v 0: ", five)
+                for run in range(10):
+                    if run > 0:
+                        self.ser.write("5v \r\n".encode())
+                    five = self.ser.read_until(self.end).decode()
+                    print("run:",run, "the 5v 0: ", five)
+                    time.sleep(4)
 
                 self.ser.write("sonic-pwr 0\r\n".encode())
                 sonic = self.ser.read_until(self.end).decode()
                 print("the sonic-pwr 0 is: ", sonic)
 
-                self.ser.write("temps 1\r\n".encode())
+                self.ser.write("temps 4\r\n".encode())
                 temps = self.ser.read_until(self.end).decode()
                 # this checks for the sensors if there are any connected
                 connection_check = temps.split("\r\n")
@@ -139,30 +156,41 @@ class SerialManager(QObject):
                 sonic = self.ser.read_until(self.end).decode()
                 print("the sonic-pwr 1 is: ", sonic)
 
-                self.ser.write("temps 1\r\n".encode())
+                self.ser.write("temps 4\r\n".encode())
                 temps = self.ser.read_until(self.end).decode()
                 print("temps: ", temps)
 
                 connection_check = temps.split("\r\n")
+
                 if connection_check[2][2] == '0':
                     error = QMessageBox.critical(self.page_dialog, "No Temperatures",
-                                                 "Powered Test Failed \n No temperatures were detected in the cable!")
+                                                 "Powered Test Failed \n No temperatures were detected in the cable!\n make sure cable is connected to TAC 4.")
                     return False
 
                 t = temps.split("=")
-                for i in range(1, len(t)):
+                sensor_total = int(connection_check[2][2])
+
+                for i in range(2, len(t)):
+                    if t[i][1] == "-":#checks for negative numbers
+                        self.powered_temp_list.append(float(t[i][2:11]))
+                    if len(t) < sensor_total:
+                        issues = QMessageBox.critical(self.page_dialog,"sensors not Scanned","The number of sensors is not fully scanned\n please re-try")
                     self.powered_temp_list.append(float(t[i][2:11]))
+
                 counter = 1
-                for check in self.powered_temp_list:
-                    if check > 40:  # this checks for garbage temps that indicate a high temperature
+                for check in self.powered_temp_list:#figure out what to do with garbage values, do we exit saying there are garbage values? or do we keep going but just inform the user? do we tell them to recalibrate?
+                    if check > 40:  # this checks for garbage temps that indicate a high temperaturde
                         self.powered_dict[counter] = check
                     counter += 1
 
                 result_tuple = (self.powered_temp_list, True)
                 return result_tuple
-            except:
+            except Exception:
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
                                                    "There was an error with the powered test")
+            except ValueError:
+                value_err = QMessageBox.critical(self.page_dialog,"Parsing Error","There was an Error parsing the information\n please try to re-connect or rescan the sensor")
+
 
     @pyqtSlot()
     def check_if_sensor_true(self):

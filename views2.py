@@ -56,7 +56,7 @@ class MainUtility(QMainWindow):
         self.config = QAction("Settings", self)
         self.config.setShortcut("Ctrl+E")
         self.config.setStatusTip("Program Settings")
-        self.config.triggered.connect(self.configuration)  # (put method)
+        self.config.triggered.connect(self.configuration)
 
         self.quit = QAction("Quit", self)
         self.quit.setShortcut("Ctrl+Q")
@@ -325,6 +325,7 @@ class MainUtility(QMainWindow):
         self.parasidic_Pwr_btn.setText("Parasitic Power Test")
         self.parasidic_Pwr_btn.setGeometry(10, 10, 110, 75)
         self.parasidic_Pwr_btn.clicked.connect(self.parasidic_test_cable)
+        #self.parasidic_Pwr_btn.clicked.connect(self.practice_fluke)
 
         table_view_btn = QPushButton()
         table_view_btn.setText("Table View")
@@ -554,7 +555,7 @@ class MainUtility(QMainWindow):
         """ Grabs the file path for the Select File"""
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
-                                                      "Excel (*.csv *.xlsx *.tsv)")  # ;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
+                                                      "Excel (*.csv *.xlsx *.tsv)")  # other options ->;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
             if (select_file[0] is ''):
                 return
             else:
@@ -1086,6 +1087,9 @@ class MainUtility(QMainWindow):
             count = 1
             list.remove(hold)
 
+    def practice_fluke(self):
+        self.sm.fluke_read()
+
     def parasidic_test_cable(self):
 
         self.powered_test_btn.setEnabled(False)
@@ -1102,9 +1106,11 @@ class MainUtility(QMainWindow):
 
     def powered_test_cable(self):
         self.parasidic_Pwr_btn.setEnabled(False)
-        self.power_end = self.sm.powered_test()
+        self.power_end = self.sm.powered_test()#returns a tuple containing (list of temps,boolean)
+        if self.power_end is None:
+            return
         if self.power_end[1] is True:
-            pass_flag = (True)
+            pass_flag = (True,)
             self.final_powr_tuple = self.power_end + pass_flag#concatinates the pass flag
             self.parasidic_Pwr_btn.setEnabled(True)
         else:
