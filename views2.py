@@ -1095,7 +1095,7 @@ class MainUtility(QMainWindow):
         self.powered_test_btn.setEnabled(False)
         self.para_end = self.sm.parasidic_test()
         if self.para_end[1] is True:
-            tuple_flag = (True)
+            tuple_flag = (True,)
             self.final_para_tuple = self.para_end + tuple_flag#this going to help us know if we can send it to the Result_Page_Dialog module
             self.powered_test_btn.setEnabled(True)
             success = QMessageBox.information(self,"Successful Parasidic Test","The Parasidic Test was Successful!")

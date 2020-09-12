@@ -97,19 +97,11 @@ class SerialManager(QObject):
                 strong = self.ser.read_until(self.end).decode()
                 print("this is strong-pu 1: ", strong)
 
-                self.ser.write("5v 0\r\n".encode())
-                for run in range(10):
-                    if run > 0:
-                        self.ser.write("5v \r\n".encode())
-                    five = self.ser.read_until(self.end).decode()
-                    print("run:",run, "the 5v 0: ", five)
-                    time.sleep(4)
-
                 self.ser.write("sonic-pwr 0\r\n".encode())
                 sonic = self.ser.read_until(self.end).decode()
                 print("the sonic-pwr 0 is: ", sonic)
 
-                self.ser.write("temps 4\r\n".encode())
+                self.ser.write("temps 1\r\n".encode())
                 temps = self.ser.read_until(self.end).decode()
                 # this checks for the sensors if there are any connected
                 connection_check = temps.split("\r\n")
@@ -118,10 +110,11 @@ class SerialManager(QObject):
                                                  "Parasidic Test Failed \n No temperatures were detected in the cable!")
                     # you need to error handle if the number of sensors detected is less than the total amount actually there,
                     # justt either pass the total number and compare it or do a read of temps with a counter or sizeof operator
+                    self.ser.write("sonic-pwr 1\r\n".encode())
                     return False
 
                 t = temps.split("=")
-                for i in range(1, len(t)):
+                for i in range(2, len(t)):
                     self.temps_list.append(float(t[i][2:11]))
                 counter = 1
                 for check in self.temps_list:
@@ -131,6 +124,7 @@ class SerialManager(QObject):
                 print("these are the temps for the parasidic test: ", self.temps_list)
 
                 result_tuple= (self.temps_list,True)
+                self.ser.write("sonic-pwr 1\r\n".encode())
                 return result_tuple
 
             except:
@@ -148,16 +142,13 @@ class SerialManager(QObject):
                 strong = self.ser.read_until(self.end).decode()
                 print("this is strong-pu 0: ", strong)
 
-                self.ser.write("5v 1\r\n".encode())
-                five = self.ser.read_until(self.end).decode()
-                print("the 5v 1: ", five)
-
                 self.ser.write("sonic-pwr 1\r\n".encode())
                 sonic = self.ser.read_until(self.end).decode()
                 print("the sonic-pwr 1 is: ", sonic)
 
-                self.ser.write("temps 4\r\n".encode())
-                temps = self.ser.read_until(self.end).decode()
+                self.ser.write("temps 1\r\n".encode())
+                temps = self.ser.read_until(self.end).\
+                    decode()
                 print("temps: ", temps)
 
                 connection_check = temps.split("\r\n")
