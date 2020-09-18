@@ -51,7 +51,10 @@ class MainUtility(QMainWindow):
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
 
         self.settings = QSettings("BeadedStream", "PCBATestUtility")
-        self.settings.setValue("report_file_path", "/path/to/report/folder")
+        self.settings.setValue("configuration_file_path", "/path/to/report/folder/file")
+        self.settings.setValue("MetaData_file_path","/path/to/report/folder/file")
+        self.settings.setValue("Sensor_Positions_file_path","/path/to/report/folder/file")
+        self.settings.setValue("Final_Report_Directory","/path/to/directory")
 
         self.config = QAction("Settings", self)
         self.config.setShortcut("Ctrl+E")
@@ -347,7 +350,8 @@ class MainUtility(QMainWindow):
 
         # program tab
         self.program_tab = QtWidgets.QWidget()
-        self.program_tab.setEnabled(False)
+        #self.program_tab.setEnabled(False)
+        self.program_tab.setEnabled(True)
 
         self.program_gridLayout = QGridLayout()
 
@@ -363,6 +367,7 @@ class MainUtility(QMainWindow):
 
         eeprom_btn = QPushButton()
         eeprom_btn.setText("Program EEPROM")
+        eeprom_btn.clicked.connect(self.eeprom_call)
 
         cable_verify_btn = QPushButton()
         cable_verify_btn.setText("Cable Verify")
@@ -412,24 +417,67 @@ class MainUtility(QMainWindow):
             self.highlight(self.physical_num, False)
 
     def configuration(self):
+
         FILE_BTN_WIDTH = 30
         self.path_check = True
 
         self.settings_widget = QDialog(self)
 
-        self.report_btn = QPushButton("[...]")
-        self.report_btn.setFixedWidth(FILE_BTN_WIDTH)
-        self.report_btn.clicked.connect(self.set_report_location)
-        self.report_lbl = QLabel("Set report save location: ")
-        self.report_lbl.setFont(self.config_font)
-        self.report_path_lbl = QLabel(self.settings.value("report_file_path"))
-        self.report_path_lbl.setFont(self.config_path_font)
-        self.report_path_lbl.setStyleSheet("QLabel {color: blue}")
+        self.configuration_btn = QPushButton("[...]")
+        self.configuration_btn.setFixedWidth(FILE_BTN_WIDTH)
+        self.configuration_lbl = QLabel("Set Configuration save location: ")
+        self.configuration_lbl.setFont(self.config_font)
+        self.configuration_path_lbl = QLabel(self.settings.value("configuration_file_path"))
+        self.configuration_path_lbl.setFont(self.config_path_font)
+        self.configuration_path_lbl.setStyleSheet("QLabel {color: blue}")
+        self.configuration_btn.clicked.connect(self.cal_report_loc)
+
+        self.meta_data_btn = QPushButton("[...]")
+        self.meta_data_btn.setFixedWidth(FILE_BTN_WIDTH)
+        self.meta_data_lbl = QLabel("Set MetaData save location: ")
+        self.meta_data_lbl.setFont(self.config_font)
+        self.meta_data_path_lbl = QLabel(self.settings.value("MetaData_file_path"))
+        self.meta_data_path_lbl.setFont(self.config_path_font)
+        self.meta_data_path_lbl.setStyleSheet("QLabel {color: blue}")
+        self.meta_data_btn.clicked.connect(self.meta_report_loc)
+
+        self.sensor_btn = QPushButton("[...]")
+        self.sensor_btn.setFixedWidth(FILE_BTN_WIDTH)
+        self.sensor_lbl = QLabel("Set Sensor Location save location: ")
+        self.sensor_lbl.setFont(self.config_font)
+        self.sensor_path_lbl = QLabel(self.settings.value("Sensor_Positions_file_path"))
+        self.sensor_path_lbl.setFont(self.config_path_font)
+        self.sensor_path_lbl.setStyleSheet("QLabel {color: blue}")
+        self.sensor_btn.clicked.connect(self.sensor_report_loc)
+
+        self.final_btn = QPushButton("[...]")
+        self.final_btn.setFixedWidth(FILE_BTN_WIDTH)
+        self.final_lbl = QLabel("Set the location for the final report:")
+        self.final_lbl.setFont(self.config_font)
+        self.final_path_lbl = QLabel(self.settings.value("Final_Report_Directory"))
+        self.final_path_lbl.setFont(self.config_path_font)
+        self.final_path_lbl.setStyleSheet("QLabel {color: blue}")
+        self.final_btn.clicked.connect(self.set_report_location)
+
+        self.get_all_btn = QPushButton("[Get All Files]")
+        self.get_all_btn.clicked.connect(self.collect_all)
 
         save_loc_layout = QGridLayout()
-        save_loc_layout.addWidget(self.report_lbl, 0, 0)
-        save_loc_layout.addWidget(self.report_btn, 0, 1)
-        save_loc_layout.addWidget(self.report_path_lbl, 1, 0)
+        save_loc_layout.addWidget(self.configuration_lbl, 0, 0)
+        save_loc_layout.addWidget(self.configuration_btn, 0, 1)
+        save_loc_layout.addWidget(self.configuration_path_lbl, 1, 0)
+
+        save_loc_layout.addWidget(self.meta_data_lbl, 2, 0)
+        save_loc_layout.addWidget(self.meta_data_btn, 2, 1)
+        save_loc_layout.addWidget(self.meta_data_path_lbl, 3, 0)
+
+        save_loc_layout.addWidget(self.sensor_lbl, 4, 0)
+        save_loc_layout.addWidget(self.sensor_btn, 4, 1)
+        save_loc_layout.addWidget(self.sensor_path_lbl, 5, 0)
+
+        save_loc_layout.addWidget(self.final_lbl, 6,0)
+        save_loc_layout.addWidget(self.final_btn, 6,1)
+        save_loc_layout.addWidget(self.final_path_lbl, 7,0)
 
         save_loc_group = QGroupBox("Save Locations")
         save_loc_group.setLayout(save_loc_layout)
@@ -442,6 +490,7 @@ class MainUtility(QMainWindow):
         button_layout = QHBoxLayout()
         button_layout.addWidget(cancel_btn)
         button_layout.addStretch()
+        button_layout.addWidget(self.get_all_btn)
         button_layout.addWidget(apply_btn)
 
         hbox_bottom = QHBoxLayout()
@@ -460,7 +509,11 @@ class MainUtility(QMainWindow):
 
     def apply_settings(self):
         """Read user inputs and apply settings."""
-        self.settings.setValue("report_file_path", self.report_path_lbl.text())
+        self.get_all_btn.setEnabled(True)
+        self.settings.setValue("configuration_file_path", self.configuration_path_lbl.text())
+        self.settings.setValue("MetaData_file_path",self.meta_data_path_lbl.text())
+        self.settings.setValue("Sensor_Positions_file_path",self.sensor_path_lbl.text())
+        self.settings.setValue("Final_Report_Directory",self.final_path_lbl.text())
 
         QMessageBox.information(self.settings_widget, "Information",
                                 "Settings applied!")
@@ -469,14 +522,42 @@ class MainUtility(QMainWindow):
 
     def set_report_location(self):
         """Opens file dialog for setting the save location for the report."""
-
         self.report_dir = QFileDialog.getExistingDirectory(
-            self,
-            "Select report save location."
-        )
+            self, "Select report save location.")
         if self.path_check is True:
-            self.report_path_lbl.setText(self.report_dir)
+            self.final_path_lbl.setText(self.report_dir)
 
+    def cal_report_loc(self):
+        self.get_all_btn.setEnabled(False)
+        cal_dir = QFileDialog.getOpenFileName(self,"Configuration file: choose save location.","C:/","text(*.txt)")
+        if cal_dir[0] == "":
+            return
+        if self.path_check is True:
+            self.configuration_path_lbl.setText(cal_dir[0])
+    def meta_report_loc(self):
+        self.get_all_btn.setEnabled(False)
+        meta_dir = QFileDialog.getOpenFileName(self,"MetaData: choose save location.","C:/","text(*.txt)")
+        if meta_dir[0] == "":
+            return
+        if self.path_check is True:
+            self.meta_data_path_lbl.setText(meta_dir[0])
+    def sensor_report_loc(self):
+        self.get_all_btn.setEnabled(False)
+        sensor_dir = QFileDialog.getOpenFileName(self,"Sensor Positions: choose save location.","C:/","text(*.txt)")
+        if sensor_dir[0] == "":
+            return
+        if self.path_check is True:
+            self.sensor_path_lbl.setText(sensor_dir[0])
+    def collect_all(self):
+        cal_file = QFileDialog.getOpenFileName(self, "Configuration file: choose save location.", "C:/", "text(*.txt)")
+        meta_file = QFileDialog.getOpenFileName(self, "MetaData: choose save location.", "C:/", "text(*.txt)")
+        sensor_file = QFileDialog.getOpenFileName(self, "Sensor Positions: choose save location.", "C:/", "text(*.txt)")
+        final_report_dir = QFileDialog.getExistingDirectory(self,"Final Report: Choose a save location")
+        if self.path_check is True:
+            self.configuration_path_lbl.setText(cal_file[0])
+            self.meta_data_path_lbl.setText(meta_file[0])
+            self.sensor_path_lbl.setText(sensor_file[0])
+            self.final_path_lbl.setText(final_report_dir)
     def cancel_settings(self):
         """Close the settings widget without applying changes."""
         self.settings_widget.close()
@@ -1125,7 +1206,8 @@ class MainUtility(QMainWindow):
             page_para = Result_Page_Dialog.Page_Dialog(self.hex_number,self.final_para_tuple[0])
         power_vbox = QVBoxLayout( )
 
-
+    def eeprom_call(self):
+        self.sm.fluke_read()
 
 
 
