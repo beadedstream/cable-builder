@@ -1,10 +1,11 @@
 import re
+import os
 import time
 import serial
 import Result_Page_Dialog
 import serial.tools.list_ports
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QMessageBox, QDialog
+from PyQt5.QtWidgets import QMessageBox, QDialog,QFileDialog
 
 
 class SerialManager(QObject):
@@ -21,9 +22,13 @@ class SerialManager(QObject):
 
     def __init__(self):
         super().__init__()
+        self.fluke = serial.Serial(None,9600,timeout =60,parity=serial.PARITY_NONE, rtscts=False,
+                                 xonxoff=False, dsrdtr=False, write_timeout=None)
         self.ser = serial.Serial(None, 115200, timeout=60,
                                  parity=serial.PARITY_NONE, rtscts=False,
                                  xonxoff=False, dsrdtr=False, write_timeout=None)
+#115200
+
         self.memory = ''
         self.counter = 0  # this counter is not the same as the views file but it does share the same value by -1
         self.new_hexNum = False
@@ -44,9 +49,6 @@ class SerialManager(QObject):
         """Checks connection to the serial port and sends a command."""
         if self.ser.is_open:
             try:
-                # Debug items pt.1
-                # then = time.time()
-                # print(command)
                 self.flush_buffers()
 
                 command = (command + "\r\n").encode()
@@ -72,18 +74,7 @@ class SerialManager(QObject):
                 message = QMessageBox.critical(self.page_dialog, "Wake up not possible",
                                                "The board was not able to remain awake")
 
-    @pyqtSlot()
-    def fluke_read(self):
-        if self.ser.is_open:
-            try:
-                check = self.ser.write("MEAS?".encode())
-                potato = self.ser.read(check).decode()
-                self.sleep(1)
-                fluke_read_sir = self.ser.read_until(self.end).decode()
 
-                # fluke = self.ser.read_until().decode()
-            except:
-                print("failed to read the fluke")
 
 
     @pyqtSlot()
@@ -103,6 +94,7 @@ class SerialManager(QObject):
 
                 self.ser.write("temps 1\r\n".encode())
                 temps = self.ser.read_until(self.end).decode()
+
                 # this checks for the sensors if there are any connected
                 connection_check = temps.split("\r\n")
                 if connection_check[2][2] == '0':
@@ -215,7 +207,10 @@ class SerialManager(QObject):
                 print("failed the scan board")
         else:
             connect = QMessageBox.warning(self.page_dialog, "serial port not Connected",
-                                          " Please connect the serial port in the tab above")
+
+                                      " Please connect the serial port in the tab above")
+
+
 
     @pyqtSlot()
     def pcba_sensor(self):
@@ -290,7 +285,26 @@ class SerialManager(QObject):
                             self.hex_list.append(hex_num)
                             return temp
             except:
-                print("ahoy maty!")
+                board_err = QMessageBox.critical(self.page_dialog,"board not Replaced","There was an error trying to load the board")
+
+
+    @pyqtSlot()
+    def eeprom_program(self):
+        if self.ser.is_open:
+            try:
+                self.flush_buffers()
+                self.ser.write("config 1\r\n".encode())
+                config = self.ser.read_until(self.end).decode()
+                config_list = config.split("\n")
+
+                print(config)
+
+
+            except:
+                print("it didnt work")
+
+
+
 
     @pyqtSlot(int)
     def sleep(self, interval):
@@ -307,6 +321,7 @@ class SerialManager(QObject):
         except serial.serialutil.SerialException:
             return False
         return self.ser.port == port and self.ser.is_open
+
 
     def open_port(self, port):
         """Opens serial port."""
