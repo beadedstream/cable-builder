@@ -8,7 +8,7 @@ import Result_Page_Dialog
 import factory_serial_manager
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent, Qt
+from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
@@ -104,6 +104,8 @@ class MainUtility(QMainWindow):
         self.pcba_hexList = []
         self.hex_lbl_Dict = {}
         self.hex_lbl_list = []
+        self.file_dict = dict()
+        self.file_bool = False
         self.counter = 1
         self.pcba_counter = 1
         self.rowCount = 0
@@ -328,18 +330,15 @@ class MainUtility(QMainWindow):
         self.parasidic_Pwr_btn.setText("Parasitic Power Test")
         self.parasidic_Pwr_btn.setGeometry(10, 10, 110, 75)
         self.parasidic_Pwr_btn.clicked.connect(self.parasidic_test_cable)
-        #self.parasidic_Pwr_btn.clicked.connect(self.practice_fluke)
 
         table_view_btn = QPushButton()
         table_view_btn.setText("Table View")
-
-        graph_view = QPushButton()
-        graph_view.setText("Graph View")
+        table_view_btn.clicked.connect(self.test_table)
 
         self.build_gridLayout.addWidget(self.powered_test_btn, 0, 0)
         self.build_gridLayout.addWidget(self.parasidic_Pwr_btn, 1, 0)
         self.build_gridLayout.addWidget(table_view_btn, 2, 0)
-        self.build_gridLayout.addWidget(graph_view, 3, 0)
+
 
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
         self.build_tab.setLayout(self.build_gridLayout)
@@ -530,13 +529,17 @@ class MainUtility(QMainWindow):
     def cal_report_loc(self):
         self.get_all_btn.setEnabled(False)
         cal_dir = QFileDialog.getOpenFileName(self,"Configuration file: choose save location.","C:/","text(*.txt)")
+        self.file_dict[0]= cal_dir[0]
         if cal_dir[0] == "":
             return
+
         if self.path_check is True:
             self.configuration_path_lbl.setText(cal_dir[0])
     def meta_report_loc(self):
         self.get_all_btn.setEnabled(False)
         meta_dir = QFileDialog.getOpenFileName(self,"MetaData: choose save location.","C:/","text(*.txt)")
+        self.file_dict[1] = meta_dir[0]
+
         if meta_dir[0] == "":
             return
         if self.path_check is True:
@@ -544,15 +547,22 @@ class MainUtility(QMainWindow):
     def sensor_report_loc(self):
         self.get_all_btn.setEnabled(False)
         sensor_dir = QFileDialog.getOpenFileName(self,"Sensor Positions: choose save location.","C:/","text(*.txt)")
+        self.file_dict[2] = sensor_dir[0]
         if sensor_dir[0] == "":
             return
         if self.path_check is True:
             self.sensor_path_lbl.setText(sensor_dir[0])
     def collect_all(self):
+        self.file_dict.clear()
         cal_file = QFileDialog.getOpenFileName(self, "Configuration file: choose save location.", "C:/", "text(*.txt)")
         meta_file = QFileDialog.getOpenFileName(self, "MetaData: choose save location.", "C:/", "text(*.txt)")
         sensor_file = QFileDialog.getOpenFileName(self, "Sensor Positions: choose save location.", "C:/", "text(*.txt)")
         final_report_dir = QFileDialog.getExistingDirectory(self,"Final Report: Choose a save location")
+
+        self.file_dict[0]= cal_file[0]
+        self.file_dict[1]= meta_file[0]
+        self.file_dict[2]= sensor_file[0]
+
         if self.path_check is True:
             self.configuration_path_lbl.setText(cal_file[0])
             self.meta_data_path_lbl.setText(meta_file[0])
@@ -845,9 +855,6 @@ class MainUtility(QMainWindow):
                 self.check = self.sm.check_if_sensor_true()
                 if self.check is True:
                     answer = self.sm.pcba_sensor(self.hex_number)
-                    # help.show()
-                # if answer is not -1 and answer is not None:
-                # self.pcbaImgInfo(self.counter, answer)
 
             self.check = False
             answer = None
@@ -1168,18 +1175,14 @@ class MainUtility(QMainWindow):
             count = 1
             list.remove(hold)
 
-    def practice_fluke(self):
-        self.sm.fluke_read()
-
     def parasidic_test_cable(self):
-
         self.powered_test_btn.setEnabled(False)
         self.para_end = self.sm.parasidic_test()
         if self.para_end[1] is True:
             tuple_flag = (True,)
             self.final_para_tuple = self.para_end + tuple_flag#this going to help us know if we can send it to the Result_Page_Dialog module
             self.powered_test_btn.setEnabled(True)
-            success = QMessageBox.information(self,"Successful Parasidic Test","The Parasidic Test was Successful!")
+            parasidic_success = QMessageBox.information(self,"Successful Parasidic Test","The Parasidic Test was Successful!")
             self.program_tab.setEnabled(True)
         else:
             fail_flag = (False)
@@ -1194,21 +1197,26 @@ class MainUtility(QMainWindow):
             pass_flag = (True,)
             self.final_powr_tuple = self.power_end + pass_flag#concatinates the pass flag
             self.parasidic_Pwr_btn.setEnabled(True)
+            powered_success = QMessageBox.information(self, "Successful Powered Test", "The Powered Test was Successful!")
         else:
             fail_flag = (False)
             self.final_powr_tuple= self.power_end + fail_flag
 
     def test_table(self):
-        test_page = QDialog()
+
+        tuple = (self.final_powr_tuple[0],self.final_para_tuple[0])
+
+        table_view = Result_Page_Dialog.Page_Dialog(self.hex_number,tuple)
+
+        table_view.exec()
         if self.final_powr_tuple[2] is True:
             page_d = Result_Page_Dialog.Page_Dialog(self.hex_number,self.final_powr_tuple[0])#this gonna return a gridlayout with widgets in it
         if self.final_para_tuple[2] is True:
             page_para = Result_Page_Dialog.Page_Dialog(self.hex_number,self.final_para_tuple[0])
-        power_vbox = QVBoxLayout( )
+        power_vbox = QVBoxLayout()
 
     def eeprom_call(self):
-        self.sm.fluke_read()
-
+        self.sm.eeprom_program()
 
 
     def csv(self):
@@ -1264,6 +1272,8 @@ class MainUtility(QMainWindow):
         self.final_order.clear()
         self.order_dict.clear()
         self.pcba_imgs.clear()
+        self.file_dict.clear()
+        self.file_bool = False
         self.desc_group.deleteLater()
         self.pcba_groupBox.deleteLater()
         self.frame_group.deleteLater()
