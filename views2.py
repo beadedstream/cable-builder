@@ -250,6 +250,7 @@ class MainUtility(QMainWindow):
         self.scan_tab.setEnabled(False)
 
         self.scan_gridLayout = QtWidgets.QGridLayout()
+        self.scan_gridLayout.setVerticalSpacing(5)
 
         self.scan_scrollArea = QtWidgets.QScrollArea()
         self.scan_scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -262,31 +263,36 @@ class MainUtility(QMainWindow):
 
         self.current_pcba = QtWidgets.QLabel()
         self.current_pcba.setFont(self.font(20, 20, True))
-        self.scan_gridLayout.addWidget(self.current_pcba, 4, 0)
 
-        self.sort_btn = QPushButton()
+        self.sort_btn_frame = self.square_btn()
+        self.sort_btn = QPushButton(self.sort_btn_frame)
         self.sort_btn.setText("Sort")
-        self.sort_btn.setGeometry(10, 10, 110, 75)
+        self.sort_btn.setFont(self.font(10,10,True))
+        self.sort_btn.setGeometry(0, 0, 100, 100)
         self.sort_btn.setEnabled(self.sensor_num[0])
-        self.sort_btn.clicked.connect(self.OneWireSort)  # self.sort)
+        self.sort_btn.clicked.connect(self.OneWireSort)
 
-        self.replace_btn = QPushButton()
-        self.replace_btn.setText("Replace Button")
+        self.replace_btn_frame = self.square_btn()
+        self.replace_btn = QPushButton(self.replace_btn_frame)
+        self.replace_btn.setText("Fix Sensor Fail")
+        self.replace_btn.setGeometry(QtCore.QRect(0,0,100,100))
         self.replace_btn.clicked.connect(self.boardReplace)
 
-        left_arrow_icon = QtGui.QIcon()
-        left_arrow_icon.addPixmap(QtGui.QPixmap("left-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-
-        right_arrow_icon = QtGui.QIcon()
-        right_arrow_icon.addPixmap(QtGui.QPixmap("right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.start_btn_frame = self.square_btn()
+        self.start_button = QtWidgets.QPushButton(self.start_btn_frame)
+        self.start_button.setText("Scan")
+        self.start_button.setFont(self.font(10,10,True))
+        self.start_button.setGeometry(QtCore.QRect(0,0,100,100))
+        self.start_button.clicked.connect(self.start_scan)
 
         arrow_frame = QtWidgets.QFrame()
         arrow_grid = QGridLayout()
         arrow_frame.setLayout(arrow_grid)
 
-        self.start_button = QtWidgets.QPushButton()
-        self.start_button.setText("Start Scan")
-        self.start_button.clicked.connect(self.start_scan)
+        left_arrow_icon = QtGui.QIcon()
+        left_arrow_icon.addPixmap(QtGui.QPixmap("left-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        right_arrow_icon = QtGui.QIcon()
+        right_arrow_icon.addPixmap(QtGui.QPixmap("right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self.left_arrow_btn = QtWidgets.QPushButton()
         self.left_arrow_btn.setIcon(left_arrow_icon)
@@ -303,10 +309,11 @@ class MainUtility(QMainWindow):
         arrow_grid.addWidget(self.left_arrow_btn, 0, 0)
         arrow_grid.addWidget(self.right_arrow_btn, 0, 1)
 
-        self.scan_gridLayout.addWidget(self.start_button, 0, 0)
-        self.scan_gridLayout.addWidget(self.sort_btn, 1, 0)
-        self.scan_gridLayout.addWidget(self.replace_btn, 2, 0)
-        self.scan_gridLayout.addWidget(arrow_frame, 3, 0)
+        self.scan_gridLayout.addWidget(self.start_btn_frame,0,0,2,2)
+        self.scan_gridLayout.addWidget(self.sort_btn_frame, 2,0,2,2)
+        self.scan_gridLayout.addWidget(self.replace_btn_frame,4,0,2,2)
+        self.scan_gridLayout.addWidget(self.current_pcba,0,2)
+        self.scan_gridLayout.addWidget(arrow_frame,6,0)
 
         self.scan_tab.setLayout(self.scan_gridLayout)
 
@@ -392,6 +399,13 @@ class MainUtility(QMainWindow):
         self.four_tab_window.setTabText(self.four_tab_window.indexOf(self.program_tab), "Program")
 
         self.setCentralWidget(self.build_central_widget)
+
+    def square_btn(self):
+        frame = QtWidgets.QFrame()
+        frame.setFrameShape(QtWidgets.QFrame.NoFrame)
+        frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        frame.setGeometry(QtCore.QRect(0, 0, 200, 200))
+        return frame
 
     def right_check(self):
         self.pcba_current_number += 1
@@ -669,7 +683,7 @@ class MainUtility(QMainWindow):
             self.sensor_num[1] = (int(file_desc[2][1]))
             pcba_display = QLabel("Total Sensors: " + str(self.sensor_num[1]))
             pcba_display.setFont(self.font(20, 45, True))
-            self.scan_gridLayout.addWidget(pcba_display, 5, 0)
+            self.scan_gridLayout.addWidget(pcba_display, 0, 1)
 
             desc_lbl = []
             desc_lbl.append(QLabel(file_desc[0][0]))
@@ -885,11 +899,12 @@ class MainUtility(QMainWindow):
         pcba_image_lbl.setScaledContents(True)
 
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
-        self.hex_number_lbl.setGeometry(QtCore.QRect(35, 77, 160, 16))
+        self.hex_number_lbl.setGeometry(QtCore.QRect(15, 77, 160, 16))
         self.hex_number_lbl.setFont(self.font(18, 18, True))
 
-        convert_hex = int(hexD, 16)  # this converts the string hex to a 16 bit decimal
-        self.pcba_hexList.append(convert_hex)
+        new_info = hexD.replace(" ", "")
+        temp = int(new_info, 16) # this converts the string hex to a 16 bit decimal
+        self.pcba_hexList.append(temp)
         self.pcba_frame_Highlight.append(hexD)
         self.pcba_hexDict[hexD] = self.counter
         self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
@@ -948,7 +963,7 @@ class MainUtility(QMainWindow):
 
         if self.counter is self.sensor_num[1] + 1:
             pop = QMessageBox.information(self, "End of PCBA",
-                                          "You have scanned the sufficient amount of boards!")
+                                          "Done!")
             self.start_button.setEnabled(False)
         else:
             self.sm.scan_board()
@@ -1053,20 +1068,20 @@ class MainUtility(QMainWindow):
         scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
         if scan_new == QMessageBox.Ok:
             random_hex = self.sm.board_replace_scan()
-            hex_number = hex(random_hex)
+            #hex_number = hex(random_hex)
 
-        index = 0
         # this loop updates self.pcba_hexList
         for oldHex in self.pcba_hexDict:
             if self.pcba_hexDict[oldHex] is int(phy_num):
-                temp = int(oldHex, 16)
+                new_info = oldHex.replace(" ", "")
+                temp = int(new_info, 16)
                 index = self.pcba_hexList.index(temp)
                 self.pcba_hexList.remove(temp)
-                self.pcba_hexList.insert(index, random_hex)
+                self.pcba_hexList.insert(index, temp)
 
         for key in self.hex_lbl_Dict:
             if self.hex_lbl_Dict.get(key) is int(phy_num):
-                key.setText(hex_number)
+                key.setText(random_hex)
         self.pcba_current_number = 0
 
     def yesButton(self):
@@ -1117,8 +1132,7 @@ class MainUtility(QMainWindow):
 
         for order in self.final_order:  # order grabs the binary string
             for place in self.order_dict:  # place grabs the physical location
-                if order is self.order_dict[
-                    place]:  # searches throught the binary strings in order dict and puts them in final order
+                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
                     self.final_order[order] = place
                     self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
                     key_count += 1

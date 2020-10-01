@@ -220,7 +220,7 @@ class SerialManager(QObject):
                 while self.new_hexNum is False:
                     self.flush_buffers()
                     self.ser.write("temps 2\r\n".encode())
-                    # num_bytes = self.ser.in_waiting
+
                     data = self.ser.read_until(self.end).decode()
                     data_split = data.split("\n")
                     hex_line = data_split[2]
@@ -230,16 +230,16 @@ class SerialManager(QObject):
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
                         hex_number = hex_number + " 28"  # family code
-                        new_info = hex_number.replace(" ", "")
-                        temp = int(new_info, 16)
-                        hex_num = hex(temp)
-                        if str(
-                                hex_num) in self.hex_list:  # this is activated if the hex is the same as previously scanne
+                        # new_info = hex_number.replace(" ", "")
+                        # temp = int(new_info, 16)
+                        # hex_num = hex(temp)
+
+                        if str(hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanne
                             pass
                         else:
                             self.counter += 1
-                            self.hex_list.append(hex_num)
-                            self.data_ready.emit(self.counter, hex_num)
+                            self.hex_list.append(hex_number)
+                            self.data_ready.emit(self.counter, hex_number)
                             if self.counter is self.total_pcba_num:
                                 self.new_hexNum = True
 
@@ -275,15 +275,16 @@ class SerialManager(QObject):
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
                         hex_number = hex_number + " 28"  # family code
-                        new_info = hex_number.replace(" ", "")
-                        temp = int(new_info, 16)
-                        hex_num = hex(temp)
-                        if str(
-                                hex_num) in self.hex_list:  # this is activated if the hex is the same as previously scanne
-                            pass
+                        # new_info = hex_number.replace(" ", "")
+                        # temp = int(new_info, 16)
+                        # hex_num = hex(temp)
+                        if str(hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanne
+                            sensor = QMessageBox.information(self.page_dialog,"board already detected",
+                                                             "Please scan a different board \n"
+                                                             " board has been previously scanned")
                         else:
-                            self.hex_list.append(hex_num)
-                            return temp
+                            self.hex_list.append(hex_number)
+                            return hex_number
             except:
                 board_err = QMessageBox.critical(self.page_dialog,"board not Replaced","There was an error trying to load the board")
 
