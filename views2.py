@@ -1,18 +1,18 @@
 import os
 import re
 import csv
+import sys
 import math
 import time
 import random as rand
 import Result_Page_Dialog
 import factory_serial_manager
-import sys
+from multiprocessing import Process
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent
-
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
-    QLineEdit, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
+    QLineEdit, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,QProgressBar,
     QMessageBox, QAction, QActionGroup, QFileDialog, QDialog, QMenu, QTextEdit
 )
 
@@ -106,6 +106,7 @@ class MainUtility(QMainWindow):
         self.hex_lbl_list = []
         self.file_dict = dict()
         self.file_bool = False
+        self.dtc_serial = str()
         self.counter = 1
         self.pcba_counter = 1
         self.rowCount = 0
@@ -123,6 +124,9 @@ class MainUtility(QMainWindow):
         self.path_check = False
 
         self.initUI()
+
+
+
 
     def resource_path(self, relative_path):
         """Gets the path of the application relative root path to allow us
@@ -264,6 +268,9 @@ class MainUtility(QMainWindow):
         self.current_pcba = QtWidgets.QLabel()
         self.current_pcba.setFont(self.font(20, 20, True))
 
+        self.dtc_serial_lbl = QtWidgets.QLabel()
+        self.dtc_serial_lbl.setFont(self.font(20,20,True))
+
         self.sort_btn_frame = self.square_btn()
         self.sort_btn = QPushButton(self.sort_btn_frame)
         self.sort_btn.setText("Sort")
@@ -312,7 +319,8 @@ class MainUtility(QMainWindow):
         self.scan_gridLayout.addWidget(self.start_btn_frame,0,0,2,2)
         self.scan_gridLayout.addWidget(self.sort_btn_frame, 2,0,2,2)
         self.scan_gridLayout.addWidget(self.replace_btn_frame,4,0,2,2)
-        self.scan_gridLayout.addWidget(self.current_pcba,0,2)
+        self.scan_gridLayout.addWidget(self.current_pcba,0,6)
+        self.scan_gridLayout.addWidget(self.dtc_serial_lbl,0,10)
         self.scan_gridLayout.addWidget(arrow_frame,6,0)
 
         self.scan_tab.setLayout(self.scan_gridLayout)
@@ -328,25 +336,29 @@ class MainUtility(QMainWindow):
         self.build_scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.build_scrollArea.setWidgetResizable(True)
 
-        self.powered_test_btn = QtWidgets.QPushButton()
-        self.powered_test_btn.setText("Powered Test")
-        self.powered_test_btn.setGeometry(10, 10, 110, 75)
+        self.powered_test_btn_frame = self.square_btn()
+        self.powered_test_btn = QtWidgets.QPushButton(self.powered_test_btn_frame)
+        self.powered_test_btn.setText("Test Cable")
+        self.powered_test_btn.setFont(self.font(10, 10, True))
+        self.powered_test_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.powered_test_btn.clicked.connect(self.powered_test_cable)
 
-        self.parasidic_Pwr_btn = QPushButton()
-        self.parasidic_Pwr_btn.setText("Parasitic Power Test")
-        self.parasidic_Pwr_btn.setGeometry(10, 10, 110, 75)
-        self.parasidic_Pwr_btn.clicked.connect(self.parasidic_test_cable)
-
-        table_view_btn = QPushButton()
+        table_view_btn_frame = self.square_btn()
+        table_view_btn = QtWidgets.QPushButton(table_view_btn_frame)
         table_view_btn.setText("Table View")
+        table_view_btn.setFont(self.font(10, 10, True))
+        table_view_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         table_view_btn.clicked.connect(self.test_table)
 
-        self.build_gridLayout.addWidget(self.powered_test_btn, 0, 0)
-        self.build_gridLayout.addWidget(self.parasidic_Pwr_btn, 1, 0)
-        self.build_gridLayout.addWidget(table_view_btn, 2, 0)
+        self.build_dtc_serial_lbl = QtWidgets.QLabel()
+        self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setGeometry(200,10,200,10)
 
+        self.build_gridLayout.addWidget(self.powered_test_btn_frame, 1, 0,2,2)
+        self.build_gridLayout.addWidget(self.build_dtc_serial_lbl,0,10)
+        self.build_gridLayout.addWidget(table_view_btn_frame, 3, 0,2,2)
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
         self.build_tab.setLayout(self.build_gridLayout)
 
@@ -360,7 +372,6 @@ class MainUtility(QMainWindow):
         self.program_tab.setEnabled(True)
 
         self.program_gridLayout = QGridLayout()
-
         self.program_scrollArea = QtWidgets.QScrollArea()
         self.program_scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.program_scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -383,9 +394,13 @@ class MainUtility(QMainWindow):
         # final_test_btn.clicked.connect(self.set_report_location)
         final_test_btn.clicked.connect(self.csv)
 
-        self.program_gridLayout.addWidget(eeprom_btn, 0, 0)
-        self.program_gridLayout.addWidget(cable_verify_btn, 1, 0)
+        self.prog_dtc_serial_lbl = QtWidgets.QLabel()
+        self.prog_dtc_serial_lbl.setFont(self.font(20, 20, True))
+
+        self.program_gridLayout.addWidget(cable_verify_btn, 0, 0)
+        self.program_gridLayout.addWidget(eeprom_btn, 1, 0)
         self.program_gridLayout.addWidget(final_test_btn, 2, 0)
+        self.program_gridLayout.addWidget(self.prog_dtc_serial_lbl,0,10)
 
         # inputting of widgets
         self.four_tab_window.addTab(self.prep_tab, "")
@@ -658,6 +673,7 @@ class MainUtility(QMainWindow):
 
     def prep_information(self):
         """ Grabs the file path for the Select File"""
+
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
                                                       "Excel (*.csv *.xlsx *.tsv)")  # other options ->;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
@@ -675,6 +691,10 @@ class MainUtility(QMainWindow):
             file_desc = []
             for descript_cont in range(1, 7):
                 file_desc.append(self.file_contents[descript_cont].split(","))
+            #top labels for each page
+            self.dtc_serial_lbl.setText("Serial: DTC"+file_desc[0][1])
+            self.build_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
+            self.prog_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
 
             self.file_specs = []
             for content in range(7, len(self.file_contents)):
@@ -817,8 +837,6 @@ class MainUtility(QMainWindow):
                 file.close()
                 self.prep_information()
 
-        # self.pcbaImgScan()
-
     def grid(self, frame, boxNum):
 
         component = QLabel("Component")
@@ -914,7 +932,7 @@ class MainUtility(QMainWindow):
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 16))
-        pcba_right_topCorner_id_lbl.setFont(self.font(12, 75, True))
+        pcba_right_topCorner_id_lbl.setFont(self.font(20, 75, True))
 
         if self.pcba_counter is 31:
             self.pcba_counter = 1
@@ -1082,7 +1100,7 @@ class MainUtility(QMainWindow):
         for key in self.hex_lbl_Dict:
             if self.hex_lbl_Dict.get(key) is int(phy_num):
                 key.setText(random_hex)
-        self.pcba_current_number = 0
+
 
     def yesButton(self):
         m = QMessageBox.warning(self.message, "Warning",
@@ -1189,32 +1207,17 @@ class MainUtility(QMainWindow):
             count = 1
             list.remove(hold)
 
-    def parasidic_test_cable(self):
-        self.powered_test_btn.setEnabled(False)
-        self.para_end = self.sm.parasidic_test()
-        if self.para_end[1] is True:
-            tuple_flag = (True,)
-            self.final_para_tuple = self.para_end + tuple_flag#this going to help us know if we can send it to the Result_Page_Dialog module
-            self.powered_test_btn.setEnabled(True)
-            parasidic_success = QMessageBox.information(self,"Successful Parasidic Test","The Parasidic Test was Successful!")
-            self.program_tab.setEnabled(True)
-        else:
-            fail_flag = (False)
-            self.final_para_tuple = self.para_end+fail_flag
-
     def powered_test_cable(self):
-        self.parasidic_Pwr_btn.setEnabled(False)
-        self.power_end = self.sm.powered_test()#returns a tuple containing (list of temps,boolean)
+
+        self.power_end = self.sm.Test_Cable(self.sensor_num[1])#returns a tuple containing (list of temps,boolean)
         if self.power_end is None:
             return
-        if self.power_end[1] is True:
-            pass_flag = (True,)
-            self.final_powr_tuple = self.power_end + pass_flag#concatinates the pass flag
-            self.parasidic_Pwr_btn.setEnabled(True)
+        if self.power_end[1] is True and self.power_end[3]:
+            self.final_powr_tuple = self.power_end#concatinates the pass flag
             powered_success = QMessageBox.information(self, "Successful Powered Test", "The Powered Test was Successful!")
         else:
-            fail_flag = (False)
-            self.final_powr_tuple= self.power_end + fail_flag
+            self.final_powr_tuple= self.power_end
+
 
     def test_table(self):
 
@@ -1232,6 +1235,11 @@ class MainUtility(QMainWindow):
     def eeprom_call(self):
         self.sm.eeprom_program()
 
+    def awake(self):
+        '''This a loop that sends a command to the D505 to keep it awake '''
+        while True:
+            self.sm.wake_up_call()
+            time.sleep(120)
 
     def csv(self):
         '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
@@ -1302,6 +1310,7 @@ class MainUtility(QMainWindow):
         self.scan_finished = False
         self.before.clear()
         self.settings.setValue("report_file_path", "/path/to/report/folder")
+        self.wake.terminate()
         self.initUI()
 
     def populate_ports(self):

@@ -27,7 +27,6 @@ class SerialManager(QObject):
         self.ser = serial.Serial(None, 115200, timeout=60,
                                  parity=serial.PARITY_NONE, rtscts=False,
                                  xonxoff=False, dsrdtr=False, write_timeout=None)
-#115200
 
         self.memory = ''
         self.counter = 0  # this counter is not the same as the views file but it does share the same value by -1
@@ -76,57 +75,13 @@ class SerialManager(QObject):
 
 
 
-
     @pyqtSlot()
-    def parasidic_test(self):
-        self.temps_list = []
-        self.error_sensors = {}
-        if self.ser.is_open:
-            try:
-                self.flush_buffers()
-                self.ser.write("strong-pu 1\r\n".encode())
-                strong = self.ser.read_until(self.end).decode()
-                print("this is strong-pu 1: ", strong)
+    def Test_Cable(self,temp_num):
 
-                self.ser.write("sonic-pwr 0\r\n".encode())
-                sonic = self.ser.read_until(self.end).decode()
-                print("the sonic-pwr 0 is: ", sonic)
-
-                self.ser.write("temps 1\r\n".encode())
-                temps = self.ser.read_until(self.end).decode()
-
-                # this checks for the sensors if there are any connected
-                connection_check = temps.split("\r\n")
-                if connection_check[2][2] == '0':
-                    error = QMessageBox.critical(self.page_dialog, "No Temperatures",
-                                                 "Parasidic Test Failed \n No temperatures were detected in the cable!")
-                    # you need to error handle if the number of sensors detected is less than the total amount actually there,
-                    # justt either pass the total number and compare it or do a read of temps with a counter or sizeof operator
-                    self.ser.write("sonic-pwr 1\r\n".encode())
-                    return False
-
-                t = temps.split("=")
-                for i in range(2, len(t)):
-                    self.temps_list.append(float(t[i][2:11]))
-                counter = 1
-                for check in self.temps_list:
-                    if check > 40:  # this checks for garbage temps that indicate a high temperature
-                        self.error_sensors[counter] = check
-                    counter += 1
-                print("these are the temps for the parasidic test: ", self.temps_list)
-
-                result_tuple= (self.temps_list,True)
-                self.ser.write("sonic-pwr 1\r\n".encode())
-                return result_tuple
-
-            except:
-                write_error = QMessageBox.critical(self.page_dialog, "Write Error",
-                                                   "There was an error with the parasidc test")
-
-    @pyqtSlot()
-    def powered_test(self):
         self.powered_temp_list = []
         self.powered_dict = {}
+        self.temps_list = []
+        self.error_sensors = {}
         if self.ser.is_open:
             try:
                 self.flush_buffers()
@@ -139,24 +94,29 @@ class SerialManager(QObject):
                 print("the sonic-pwr 1 is: ", sonic)
 
                 self.ser.write("temps 1\r\n".encode())
-                temps = self.ser.read_until(self.end).\
-                    decode()
+                temps = self.ser.read_until(self.end).decode()
                 print("temps: ", temps)
 
                 connection_check = temps.split("\r\n")
 
-                if connection_check[2][2] == '0':
+                if connection_check[2][2] != str(temp_num):
                     error = QMessageBox.critical(self.page_dialog, "No Temperatures",
-                                                 "Powered Test Failed \n No temperatures were detected in the cable!\n make sure cable is connected to TAC 4.")
-                    return False
+                                                 "Powered Test Failed \n No temperatures were detected in the cable!\n"
+                                                 "only " + str(connection_check[2][2]) + " / " + str(temp_num))
+
+                    self.ser.write("sonic-pwr 1\r\n".encode())
+                    sonic = self.ser.read_until(self.end).decode()
+                    print("sonic-pwr 1 :", sonic)
+
+                    self.test_power_fail = ("Power_Test_fail:", False)
+
 
                 t = temps.split("=")
-                sensor_total = int(connection_check[2][2])
-
+                sensor_total = connection_check[2][2]
                 for i in range(2, len(t)):
                     if t[i][1] == "-":#checks for negative numbers
                         self.powered_temp_list.append(float(t[i][2:11]))
-                    if len(t) < sensor_total:
+                    if len(t) < temp_num:
                         issues = QMessageBox.critical(self.page_dialog,"sensors not Scanned","The number of sensors is not fully scanned\n please re-try")
                     self.powered_temp_list.append(float(t[i][2:11]))
 
@@ -166,13 +126,83 @@ class SerialManager(QObject):
                         self.powered_dict[counter] = check
                     counter += 1
 
-                result_tuple = (self.powered_temp_list, True)
-                return result_tuple
+                self.test_result_tuple = (self.powered_temp_list, True)
+
             except Exception:
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
                                                    "There was an error with the powered test")
             except ValueError:
                 value_err = QMessageBox.critical(self.page_dialog,"Parsing Error","There was an Error parsing the information\n please try to re-connect or rescan the sensor")
+
+        #Parasidic Test
+        self.ser.write("strong-pu 0\r\n".encode())
+        strong = self.ser.read_until(self.end).decode()
+        print("this is strong-pu 0: ", strong)
+
+        self.ser.write("sonic-pwr 0\r\n".encode())
+        sonic = self.ser.read_until(self.end).decode()
+        print("the sonic-pwr 0 is: ", sonic)
+
+        self.ser.write("temps 1\r\n".encode())
+        error_85 = (self.ser.read_until(self.end).decode()).split("=")
+        print("error 85 temps: ", error_85)
+        error_85_list = list()
+
+        for err in range(1, len(error_85)):
+            error_85_list.append(error_85[err][3:10])
+
+        if len(error_85_list) != temp_num:
+            failed_length = QMessageBox.critical(self.page_dialog, "lack of lenght",
+                                                 "Parasidic Test Failed \n No temperatures were detected in the cable!\n"
+                                                 "only " + str(len(error_85_list)) + " / " + str(temp_num))
+            fail = ("null", False)
+            return fail
+        for t in error_85_list:
+            if t == ["85.000", "200.000"]:
+                pass
+            else:
+                pass
+
+        self.ser.write("temps 1\r\n".encode())
+        temps = self.ser.read_until(self.end).decode()
+
+        # this checks for the sensors if there are any connected
+        connection_check = temps.split("\r\n")
+        if connection_check[2][2] != str(temp_num):
+            error = QMessageBox.critical(self.page_dialog, "No Temperatures",
+                                         "Parasidic Test Failed \n No temperatures were detected in the cable!\n"
+                                         "only " + str(connection_check[2][2]) + " / " + str(temp_num))
+
+            self.ser.write("sonic-pwr 1\r\n".encode())
+            sonic = self.ser.read_until(self.end).decode()
+            print("sonic-pwr 1 :", sonic)
+            para_fail = ("Parasidic test fail:", False)
+            self.test_power_fail += para_fail
+            return self.test_power_fail
+
+
+        t = temps.split("=")  # Check that the sensors read are in order based off of the previous screen.
+        for i in range(2, len(t)):
+            print("check:t[i][5:10] ", t[i][5:10])
+            self.temps_list.append(float(t[i][4:10]))
+
+        counter = 1
+        for check in self.temps_list:
+            if check >= 40:  # this checks for garbage temps that indicate a high temperature
+                self.error_sensors[counter] = check
+            counter += 1
+        print("these are the temps for the parasidic test: ", self.temps_list)
+
+        result_tuple = (self.temps_list, True)
+        self.test_result_tuple += result_tuple
+        self.ser.write("sonic-pwr 1\r\n".encode())
+
+        return self.test_result_tuple
+
+    # except:
+    #     write_error = QMessageBox.critical(self.page_dialog, "Write Error",
+    #                                    "There was an error with the parasidc test")
+
 
 
     @pyqtSlot()
@@ -226,15 +256,13 @@ class SerialManager(QObject):
                     hex_line = data_split[2]
                     sensor_num = hex_line[2:3]
 
-                    if sensor_num is not "0" and len(data_split) > 3:
+                    if sensor_num != '0' and len(data_split) > 3:
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
                         hex_number = hex_number + " 28"  # family code
-                        # new_info = hex_number.replace(" ", "")
-                        # temp = int(new_info, 16)
-                        # hex_num = hex(temp)
+                        print("hex_number: ",hex_number)
 
-                        if str(hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanne
+                        if str(hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanned
                             pass
                         else:
                             self.counter += 1
