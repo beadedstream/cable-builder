@@ -95,15 +95,16 @@ class MainUtility(QMainWindow):
         self.help_menu.addAction(self.aboutqt)
 
         # these are variables and list used throught the entire program
-        self.pcba_imgs = []
-        self.pcba_frame_Dict = {}
-        self.pcba_memory = []
-        self.pcba_frame_Highlight = []
-        self.hex_number = []
-        self.pcba_hexDict = {}
-        self.pcba_hexList = []
-        self.hex_lbl_Dict = {}
-        self.hex_lbl_list = []
+        self.pcba_imgs = list()
+        self.pcba_frame_Dict = dict()
+        self.pcba_memory = list()
+        self.pcba_frame_Highlight = list()
+        self.hex_number = list()
+        self.pcba_hexDict = dict()
+        self.pcba_hexList = list()
+        self.hex_list = list()
+        self.hex_lbl_Dict = dict()
+        self.hex_lbl_list = list()
         self.file_dict = dict()
         self.file_bool = False
         self.dtc_serial = str()
@@ -116,11 +117,12 @@ class MainUtility(QMainWindow):
         self.physical_num = 1
         self.lsb = -1
         self.pcba_current_number = 1
-        self.order_dict = {}
-        self.before = {}
+        self.order_dict = dict()
+        self.before = dict()
         self.scan_finished = False
-        self.serial_hex_list = []
-        self.final_order = {}
+        self.serial_hex_list = list()
+        self.final_order = dict()
+        self.final_physical_order = dict()
         self.path_check = False
 
         self.initUI()
@@ -271,7 +273,7 @@ class MainUtility(QMainWindow):
         self.dtc_serial_lbl = QtWidgets.QLabel()
         self.dtc_serial_lbl.setFont(self.font(20,20,True))
 
-        self.sort_btn_frame = self.square_btn()
+        self.sort_btn_frame = self.create_square_frame(0)
         self.sort_btn = QPushButton(self.sort_btn_frame)
         self.sort_btn.setText("Sort")
         self.sort_btn.setFont(self.font(10,10,True))
@@ -279,13 +281,13 @@ class MainUtility(QMainWindow):
         self.sort_btn.setEnabled(self.sensor_num[0])
         self.sort_btn.clicked.connect(self.OneWireSort)
 
-        self.replace_btn_frame = self.square_btn()
+        self.replace_btn_frame = self.create_square_frame(0)
         self.replace_btn = QPushButton(self.replace_btn_frame)
         self.replace_btn.setText("Fix Sensor Fail")
         self.replace_btn.setGeometry(QtCore.QRect(0,0,100,100))
         self.replace_btn.clicked.connect(self.boardReplace)
 
-        self.start_btn_frame = self.square_btn()
+        self.start_btn_frame = self.create_square_frame(0)
         self.start_button = QtWidgets.QPushButton(self.start_btn_frame)
         self.start_button.setText("Scan")
         self.start_button.setFont(self.font(10,10,True))
@@ -336,14 +338,31 @@ class MainUtility(QMainWindow):
         self.build_scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.build_scrollArea.setWidgetResizable(True)
 
-        self.powered_test_btn_frame = self.square_btn()
+        self.powered_test_btn_frame = self.create_square_frame(0)
         self.powered_test_btn = QtWidgets.QPushButton(self.powered_test_btn_frame)
         self.powered_test_btn.setText("Test Cable")
         self.powered_test_btn.setFont(self.font(10, 10, True))
         self.powered_test_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.powered_test_btn.clicked.connect(self.powered_test_cable)
 
-        table_view_btn_frame = self.square_btn()
+        self.err_grid = QGridLayout()
+        self.err_scroll_area = QtWidgets.QScrollArea()
+        self.err_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.err_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.err_scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.err_scroll_area.setWidgetResizable(True)
+        self.err_grid.addWidget(self.err_scroll_area,0,0,11,11)
+
+        self.error_box = self.create_square_frame(-1,0,0,300,300)#make box highlight red
+        self.error_box.setLayout(self.err_grid)
+        # # err_label = QtWidgets.QLabel(error_box)
+        # self.err_lbl = self.create_label(1,self.error_box,"",10,10,True,0,0,300,50)
+
+
+
+
+
+        table_view_btn_frame = self.create_square_frame(0)
         table_view_btn = QtWidgets.QPushButton(table_view_btn_frame)
         table_view_btn.setText("Table View")
         table_view_btn.setFont(self.font(10, 10, True))
@@ -360,6 +379,7 @@ class MainUtility(QMainWindow):
         self.build_gridLayout.addWidget(self.build_dtc_serial_lbl,0,10)
         self.build_gridLayout.addWidget(table_view_btn_frame, 3, 0,2,2)
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
+        self.build_gridLayout.addWidget(self.error_box,12,1,1,11)
         self.build_tab.setLayout(self.build_gridLayout)
 
         self.cable_grid = QGridLayout()
@@ -402,6 +422,7 @@ class MainUtility(QMainWindow):
         self.program_gridLayout.addWidget(final_test_btn, 2, 0)
         self.program_gridLayout.addWidget(self.prog_dtc_serial_lbl,0,10)
 
+        self.sm.wake_up_call()
         # inputting of widgets
         self.four_tab_window.addTab(self.prep_tab, "")
         self.four_tab_window.addTab(self.scan_tab, "")
@@ -415,12 +436,46 @@ class MainUtility(QMainWindow):
 
         self.setCentralWidget(self.build_central_widget)
 
-    def square_btn(self):
-        frame = QtWidgets.QFrame()
-        frame.setFrameShape(QtWidgets.QFrame.NoFrame)
-        frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        frame.setGeometry(QtCore.QRect(0, 0, 200, 200))
-        return frame
+    def create_square_frame(self,frame_type,x=0,y=0,length=200,height= 200):
+        if frame_type == 0:
+            frame = QtWidgets.QFrame()
+            frame.setFrameShape(QtWidgets.QFrame.NoFrame)
+            frame.setFrameShadow(QtWidgets.QFrame.Raised)
+            frame.setGeometry(QtCore.QRect(x, y, height, length))
+            return frame
+        elif frame_type == -1:
+            error_frame = QtWidgets.QFrame()
+            error_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
+            error_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+            error_frame.setGeometry(QtCore.QRect(x, y, height, length))
+            return error_frame
+
+    def create_label(self,type,inputted,txt = "",f_size =0,f_weight=0,f_bold = False,g_x=0,g_y=0,g_length=0,g_height=0,pixmap ="" ,scale_content=False):
+        ''' go back and adjust all of the label calls to call to this function, do this during the refactoring phase.'''
+        if type == 0:
+            lbl = QtWidgets.QLabel()
+            lbl.setText(txt)
+            lbl.setFont(self.font(f_size,f_weight,f_bold))
+            lbl.setGeometry(QtCore.QRect(g_x, g_y, g_length, g_height))
+            return lbl
+        elif type == 1:
+            lbl = QtWidgets.QLabel(inputted)
+            lbl.setText(txt)
+            lbl.setFont(self.font(f_size, f_weight, f_bold))
+            lbl.setGeometry(QtCore.QRect(g_x, g_y, g_length,g_height))
+            return lbl
+        elif type == 2:
+            lbl = QtWidgets.QLabel()
+            lbl.setText(txt)
+            lbl.setFont(self.font(f_size,f_weight,f_bold))
+            lbl.setGeometry(QtCore.QRect(g_x,g_y,g_length,g_height))
+            lbl.setPixmap(QtGui.QPixmap(pixmap))
+            lbl.setScaleContents(scale_content)
+            return lbl
+
+
+
+
 
     def right_check(self):
         self.pcba_current_number += 1
@@ -892,7 +947,7 @@ class MainUtility(QMainWindow):
             answer = None
             self.counter += 1
             if self.counter is self.sensor_num[1] + 1:
-                pop = QMessageBox.information(self, "End of PCBA", "You have scanned the sufficient amount of boards!",
+                pop = QMessageBox.information(self, "End of PCBA", "Done!",
                                               QMessageBox.Ok)
                 self.start_button.setEnabled(False)
 
@@ -921,8 +976,10 @@ class MainUtility(QMainWindow):
         self.hex_number_lbl.setFont(self.font(18, 18, True))
 
         new_info = hexD.replace(" ", "")
-        temp = int(new_info, 16) # this converts the string hex to a 16 bit decimal
+        temp = int(new_info, 16)
+        self.hex_list.append(new_info)
         self.pcba_hexList.append(temp)
+
         self.pcba_frame_Highlight.append(hexD)
         self.pcba_hexDict[hexD] = self.counter
         self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
@@ -1171,6 +1228,13 @@ class MainUtility(QMainWindow):
             self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
             c += 1
 
+
+        #this bottom loop puts the final order according to its hex so that I may use it for error checking during the parasidic and pwr test
+        count = 0
+        for run in self.final_order:
+            self.final_physical_order[self.hex_list[count]] = self.final_order[run]
+            count += 1
+
         self.file_btn.setEnabled(False)
         self.right_arrow_btn.setEnabled(True)
         self.highlight(self.physical_num, True)
@@ -1208,11 +1272,42 @@ class MainUtility(QMainWindow):
             list.remove(hold)
 
     def powered_test_cable(self):
+        self.power_end = self.sm.Test_Cable(self.sensor_num[1],self.final_physical_order)#returns a tuple containing (description,list of temps,boolean)
 
-        self.power_end = self.sm.Test_Cable(self.sensor_num[1])#returns a tuple containing (list of temps,boolean)
         if self.power_end is None:
             return
-        if self.power_end[1] is True and self.power_end[3]:
+
+        elif  self.power_end[2] is False:
+            if isinstance(self.power_end[1],str):
+                warning = QMessageBox.critical(self,"No sensors","No sensors Scanned\n Please try again")
+
+            elif len(self.power_end[1]) == 1:
+                inform = QMessageBox.warning(self, "Wrong Sensors Found",
+                                         "Please See below for more information")  # display a page of the pysical order where the cables are wrong
+                err_lbl = self.create_label(1, self.error_box,"Board Number: " + str(self.power_end[1][0]) + " is Wrong 123456789-1234567890=1234567890--1234567890",
+                                                 10, 10, True, 0, 0, 150, 50)
+                self.err_grid.addWidget(err_lbl,0,0,11,11)
+            else:
+                temp_frame =self.create_square_frame(0,0,0,150,300)
+                temp_grid = QtWidgets.QGridLayout()
+                temp_frame.setLayout(temp_grid)
+                temp_frame.setAutoFillBackground(True)
+                temp_frame.setPalette(self.palette(255, 139, 119))
+                temp_grid.setSpacing(20)
+
+                x = 0
+                for physical_num in self.power_end[1]:
+                    lbl = self.create_label(0,self.error_box,"Board Number: " + str(physical_num) + " is a Wrong Board",10,10,True,0,0,150,50)
+                    temp_grid.addWidget(lbl,x,0,11,11)
+                    x +=2
+
+                self.err_scroll_area.setWidget(temp_frame)
+        elif isinstance(self.power_end[4],str) and self.power_end[5] == False:
+            inform = QMessageBox.critical(self,self.power_end[3],self.power_end[4])
+        elif self.power_end[5] is False:
+            pass
+
+        elif self.power_end[2] is True and self.power_end[5] is True:
             self.final_powr_tuple = self.power_end#concatinates the pass flag
             powered_success = QMessageBox.information(self, "Successful Powered Test", "The Powered Test was Successful!")
         else:
@@ -1310,7 +1405,7 @@ class MainUtility(QMainWindow):
         self.scan_finished = False
         self.before.clear()
         self.settings.setValue("report_file_path", "/path/to/report/folder")
-        self.wake.terminate()
+        # self.wake.terminate()
         self.initUI()
 
     def populate_ports(self):
