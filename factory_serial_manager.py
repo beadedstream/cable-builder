@@ -162,9 +162,7 @@ class SerialManager(QObject):
                     for temp in parasidic_test_results[1]:
                         test_result_dict[self.test_result_tuple[1][hex]] = temp
                     return ("Failed Test",test_result_dict,False)
-
                 self.test_result_tuple += parasidic_test_results
-
 
                 return self.test_result_tuple#EXIT 3
 
@@ -341,10 +339,8 @@ class SerialManager(QObject):
                     bad_temp_name = str()
                     for temp in temperature_list:
                         if temp > 80 and temp < 90:
-                            # return ("Cable Verify Failed","Sensor Number"+pcba_dict.get(pcba_keys[key])+" has no power",False)
                             bad_temp_name = bad_temp_name+ "Sensor: "+str(pcba_dict.get(hex_list[key])) + " has no power\n"
                         elif temp > 91:
-                            # return ("Cable Verify Failed","Sensor Number"+pcba_dict.get(pcba_keys[key])+" is a bad sensor",False)
                             bad_temp_name = bad_temp_name + "Sensor: "+str(pcba_dict.get(hex_list[key])) +" bad sensor \n"
                         key += 1
 
