@@ -2,6 +2,7 @@ import re
 import os
 import time
 import serial
+from datetime import date
 import Result_Page_Dialog
 import serial.tools.list_ports
 from PyQt5 import QtGui
@@ -394,7 +395,12 @@ class SerialManager(QObject):
 
                     pcba = (hex_list,temp_list)
                     return pcba
-
+                elif key ==3:
+                    for hex in range(3, len(temps)):
+                        hex_list.append(temps[hex][4:24] + "28")
+                    hex_list.pop()
+                    hex_list.pop()
+                    return hex_list
             except:
                 return False
 
@@ -440,6 +446,7 @@ class SerialManager(QObject):
 
         if self.ser.is_open:
             hex_number = ""
+
             try:
                 while self.new_Bool is False:
                     self.ser.write("temps 2\r\n".encode())
@@ -448,14 +455,13 @@ class SerialManager(QObject):
                     hex_line = data_split[2]
                     sensor_num = hex_line[2:3]
 
-                    if sensor_num != '0' and len(data_split) > 3:
+                    if sensor_num == '1' and len(data_split) > 5:
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
                         hex_number = hex_number + " 28"  # family code
                         print("hex_number: ", hex_number)
 
-                        if str(
-                                hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanned
+                        if str(hex_number) in self.hex_list:# this is activated if the hex is the same as previously scanned
                             pass
                         else:
                             self.counter += 1
@@ -525,19 +531,68 @@ class SerialManager(QObject):
                                                  "There was an error trying to load the board")
 
     @pyqtSlot()
-    def eeprom_program(self):
+    def eeprom_program(self,top_list,sensor_positions_list):
         if self.ser.is_open:
             try:
                 self.flush_buffers()
-                self.ser.write("config 1\r\n".encode())
-                config = self.ser.read_until(self.end).decode()
-                config_list = config.split("\n")
+                self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+                self.ser.write(" \r\n".encode())
 
-                print(config)
+                self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
+                self.ser.write(" \r\n".encode())
 
+                self.flush_buffers()
+                self.ser.write("temps 1 \r\n".encode())
+                tempscall = self.ser.read_until(self.end).decode()
+                print("this first temps call",tempscall)
+
+                bottom_of_list = self.get_meta_data_info()
+                config_list = top_list+bottom_of_list
+
+                for line in reversed(config_list):
+                    self.ser.write(("tac-ee-meta 1 w "+line+"\r\n").encode())
+                    chk = self.ser.read_until(self.end).decode()
+                    time.sleep(1)
+                self.ser.write(" \r\n".encode())
+                check = self.ser.read_until(self.end).decode()
+
+                #load ids
+                self.flush_buffers()
+                id_list = self.hex_or_temps_parser(3,"1")
+                if id_list is False or len(id_list) != len(sensor_positions_list):
+                    show = QMessageBox.critical(self.page_dialog,"warning","Failed to program\n Please Try Again")
+                    return
+
+                self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+                for id in id_list:
+                    self.ser.write((id + " \r\n").encode())
+                    time.sleep(.5)
+
+
+                # sensor Position loader
+                self.flush_buffers()
+                self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
+                for positions in sensor_positions_list:
+                    self.ser.write((positions + " \r\n").encode())
+                    time.sleep(.5)
+
+
+                self.flush_buffers()
+                self.ser.write("config \r\n".encode())
+                look = self.ser.read_until(self.end).decode()
+                print("final check config:", look)
 
             except:
-                print("it didnt work")
+                self.ser.write(" \r\n".encode())
+                print("eeprom didnt work")
+    def get_meta_data_info(self):
+        meta_data_list= list()
+        dt = date.today()
+        current_date = dt.strftime("%m%d%y")
+        meta_data_list.append("date created @ "+current_date)
+        meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")
+        meta_data_list.append("hardware @ 1.0d")
+        return meta_data_list
 
     @pyqtSlot(int)
     def sleep(self, interval):

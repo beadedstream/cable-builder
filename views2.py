@@ -352,6 +352,23 @@ class MainUtility(QMainWindow):
         self.powered_test_btn.clicked.connect(self.parasidic_and_power_test)
 
         self.build_error_box = self.get_err_display_box()
+
+        self.build_update_btn_frame = self.create_square_frame(0)
+        self.build_update_btn = QtWidgets.QPushButton(self.build_update_btn_frame)
+        self.build_update_btn.setText("Update")
+        self.build_update_btn.setFont(self.font(10, 10, True))
+        self.build_update_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
+        self.build_update_btn.setVisible(False)
+        # self.build_update_btn.clicked.connect('''function to update button''')
+
+        self.build_ignore_btn_frame = self.create_square_frame(0)
+        self.build_ignore_btn = QtWidgets.QPushButton(self.build_ignore_btn_frame)
+        self.build_ignore_btn.setText("Ignore")
+        self.build_ignore_btn.setFont(self.font(10, 10, True))
+        self.build_ignore_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
+        self.build_ignore_btn.setVisible(False)
+        # self.build_ignore_btn.clicked.connect("pass ")
+
         # self.err_grid = QGridLayout()
         # self.err_scroll_area = QtWidgets.QScrollArea()
         # self.err_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -618,21 +635,27 @@ class MainUtility(QMainWindow):
 
     def get_err_display_box(self):
         display_box_contents = list()
-        internal_box = self.create_square_frame(-1, 0, 0, 150, 300)  # make box highlight red
+
+        internal_box = self.create_square_frame(-1, 0, 0, 600, 600)  # make box highlight red
         internal_box.setAutoFillBackground(True)
+        internal_grid =QGridLayout()
+        internal_box.setLayout(internal_grid)
 
         grid = QGridLayout()
         grid.setSpacing(20)
-        scroll_area = QtWidgets.QScrollArea(internal_box)
+        scroll_area = QtWidgets.QScrollArea()
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
         scroll_area.setWidgetResizable(True)
         scroll_area.setLayout(grid)
 
+        internal_grid.addWidget(scroll_area,0,0)
+
         display_box_contents.append(internal_box)
         display_box_contents.append(grid)
         display_box_contents.append(scroll_area)
+        display_box_contents.append(internal_grid)
 
         return display_box_contents
 
@@ -829,10 +852,12 @@ class MainUtility(QMainWindow):
             file_desc = []
             for descript_cont in range(1, 7):
                 file_desc.append(self.file_contents[descript_cont].split(","))
+
             # top labels for each page
             self.dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
             self.build_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
             self.prog_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
+            self.meta_data_serial = file_desc[0][1]
 
             self.file_specs = []
             for content in range(7, len(self.file_contents)):
@@ -1041,6 +1066,7 @@ class MainUtility(QMainWindow):
                 self.start_button.setEnabled(False)
 
     def start_scan(self):
+        # self.start_button.setEnabled(False)
         self.sm.total_pcba_num = self.sensor_num[1]
         self.sm.scan_board()
 
@@ -1127,7 +1153,7 @@ class MainUtility(QMainWindow):
         self.counter += 1
 
         if self.counter is self.sensor_num[1] + 1:
-            pop = QMessageBox.information(self, "End of PCBA",
+            pop = QMessageBox.information(self, "Done",
                                           "Done!")
             self.start_button.setEnabled(False)
         else:
@@ -1363,6 +1389,8 @@ class MainUtility(QMainWindow):
             list.remove(hold)
 
     def parasidic_and_power_test(self):
+        self.build_update_btn.setVisible(False)
+        self.build_ignore_btn.setVisible(False)
         self.build_error_box[0].setVisible(False)
         # self.error_box.setVisible(False)
         # self.temp_frame.setVisible(False)
@@ -1427,6 +1455,7 @@ class MainUtility(QMainWindow):
 
 
     def print_pwr_para_test_result(self,result):
+
         self.build_error_box[0].setVisible(True)
         # self.error_box.setVisible(True)
         # self.temp_frame.setVisible(True)
@@ -1440,13 +1469,17 @@ class MainUtility(QMainWindow):
                 x = 0
                 sensor = 0
                 for physical_num in result[1]:
-                    lbl = self.create_label(0,"","Position " + str(physical_num) + " Wrong ID: Unexpected id returned", 10, 10, True, 0,
-                                            0, 150, 50)
+                    lbl = self.create_label(0,"","Position " + str(physical_num) + " Wrong ID: Unexpected id returned", 10, 10, True, 100,
+                                            100,150, 50)
                     self.wrong_sensors_found_list.append(lbl)
-                    self.build_error_box[1].addWidget(self.wrong_sensors_found_list[sensor], x, 0, 0, 0)
+                    self.build_error_box[1].addWidget(self.wrong_sensors_found_list[sensor], x, 0, 2, 2)
                     # self.temp_grid.addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
                     x += 2
                     sensor += 1
+                self.build_error_box[1].addWidget(self.build_update_btn,0,2,1,1)
+                self.build_error_box[1].addWidget(self.build_ignore_btn,0,4,1,1)
+                self.build_update_btn.setVisible(True)
+                self.build_ignore_btn.setVisible(True)
             elif isinstance(result[1],str):
                 lbl = self.create_label(0,"",result[1], 10, 10, True, 0,0, 150, 50)
                 self.wrong_sensors_found_list.append(lbl)
@@ -1513,6 +1546,8 @@ class MainUtility(QMainWindow):
         result = self.sm.verify_pcba(1, self.final_physical_order,total_sensors)
         if isinstance(result, tuple):
             vct = QMessageBox.information(self, result[0], result[1])
+
+
 
     def image_loader(self):
         self.cable_image_list = list()
@@ -1631,7 +1666,29 @@ class MainUtility(QMainWindow):
         power_vbox = QVBoxLayout()
 
     def eeprom_call(self):
-        self.sm.eeprom_program()
+        # self.eeprom_btn.setEnabled(False)
+        metaData_info_list = list()
+        # sensor_positions_list = list()
+        lead = self.file_description[4][1][:-1]
+        metaData_info_list.append("serial @ "+self.meta_data_serial)
+        metaData_info_list.append("lead @ "+lead)
+        sensor_positions_list = self.get_sensor_positions()
+
+        #grab serial num info and lead info
+        self.sm.eeprom_program(metaData_info_list,sensor_positions_list)
+
+    def get_sensor_positions(self):
+        sensor_positions = list()
+        specs = self.file_specs.copy()
+        specs.pop(0)
+        specs.pop(0)
+        specs.pop(0)
+
+        sensor_positions.append("0.0")
+        for position in specs:
+            sensor_positions.append(position[2][:-1])
+        sensor_positions.pop()
+        return sensor_positions
 
     def awake(self):
         '''This a loop that sends a command to the D505 to keep it awake '''
