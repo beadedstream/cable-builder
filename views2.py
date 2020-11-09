@@ -126,6 +126,7 @@ class MainUtility(QMainWindow):
         self.final_order = dict()
         self.final_physical_order = dict()
         self.wrong_sensors_found_list = list()
+        self.error_messages = list()
         self.path_check = False
 
         self.image_loader()
@@ -367,38 +368,7 @@ class MainUtility(QMainWindow):
         self.build_ignore_btn.setFont(self.font(10, 10, True))
         self.build_ignore_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.build_ignore_btn.setVisible(False)
-        # self.build_ignore_btn.clicked.connect("pass ")
-
-        # self.err_grid = QGridLayout()
-        # self.err_scroll_area = QtWidgets.QScrollArea()
-        # self.err_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        # self.err_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        # self.err_scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
-        # self.err_scroll_area.setWidgetResizable(True)
-        # self.err_grid.addWidget(self.err_scroll_area, 0, 0, 11, 11)
-        #
-        # self.error_box = self.create_square_frame(-1, 0, 0, 300, 300)  # make box highlight red
-        # self.error_box.setLayout(self.err_grid)
-        #
-        # self.temp_frame = self.create_square_frame(0, 0, 0, 150, 300)
-        # self.temp_grid = QtWidgets.QGridLayout()
-        # self.temp_frame.setLayout(self.temp_grid)
-        # self.temp_frame.setAutoFillBackground(True)
-        # self.temp_grid.setSpacing(20)
-        # self.err_scroll_area.setWidget(self.temp_frame)
-        #
-        # self.success_lbl = self.create_label(0, self.error_box, " ", 10, 10,
-        #                                      True,
-        #                                      0, 0, 150, 50)
-        # self.success_print.append(self.success_lbl)
-        # self.success_print.append(False)
-
-        # table_view_btn_frame = self.create_square_frame(0)
-        # table_view_btn = QtWidgets.QPushButton(table_view_btn_frame)
-        # table_view_btn.setText("Table View")
-        # table_view_btn.setFont(self.font(10, 10, True))
-        # table_view_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        # table_view_btn.clicked.connect(self.test_table)
+        self.build_ignore_btn.clicked.connect(self.change_error_box)
 
         self.build_dtc_serial_lbl = QtWidgets.QLabel()
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
@@ -414,7 +384,7 @@ class MainUtility(QMainWindow):
         self.build_gridLayout.addWidget(self.build_dtc_serial_lbl, 0, 10)
         # self.build_gridLayout.addWidget(table_view_btn_frame, 4, 0, 2, 2)
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
-        self.build_gridLayout.addWidget(self.build_error_box[0], 12, 1, 2, 11)
+
         self.build_tab.setLayout(self.build_gridLayout)
 
         self.cable_grid = QGridLayout()
@@ -1389,25 +1359,14 @@ class MainUtility(QMainWindow):
             list.remove(hold)
 
     def parasidic_and_power_test(self):
+        err_box = self.get_err_display_box()
+        err_box[0].setVisible(False)
         self.build_update_btn.setVisible(False)
         self.build_ignore_btn.setVisible(False)
-        self.build_error_box[0].setVisible(False)
-        # self.error_box.setVisible(False)
-        # self.temp_frame.setVisible(False)
-        # c = 0
-        # try:
-        #    item = self.temp_grid.takeAt(0)
-        #    del item
-        # except:
-        #     pass
-        #
-        # self.temp_frame.setAutoFillBackground(False)
-        # self.success_lbl.setText(" ")
-        # self.success_print[1] = False
+        self.error_messages.clear()
 
         self.power_end = tuple()
 
-        # self.temp_frame.setPalette(self.palette(225,225,225))
         time_start = time.time()
         protection_board = self.has_protection_board()
 
@@ -1416,104 +1375,74 @@ class MainUtility(QMainWindow):
                                             time_start,protection_board)  # returns a 3 or 6 tuple containing (description,list of temps,boolean)
 
         self.progress_bar.setValue(self.getTime(time_start))
-        #The bottom code resets the previous display from the test
-        # if len(self.wrong_sensors_found_list) >= 1:
-        #     for obj in self.wrong_sensors_found_list:
-                # self.temp_grid.removeWidget(obj)
-
-        self.progress_bar.setValue(self.getTime(time_start))
-        # self.wrong_sensors_found_list.clear()
-        self.progress_bar.setValue(self.getTime(time_start))
-        #end of reset display
 
         #power test result
         if self.power_end is None:
             self.progress_bar.setValue(self.getTime(time_start))
-            self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False))
+            self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False),err_box)
             return
 
         elif self.power_end[2] is False:
             if isinstance(self.power_end[1], str):  # Exit 2
                 self.progress_bar.setValue(self.getTime(time_start))
-                self.print_pwr_para_test_result(self.power_end)
+                self.print_pwr_para_test_result(self.power_end,err_box)
 
             elif len(self.power_end[1]) >= 1:  # EXIT 1
                 self.progress_bar.setValue(self.getTime(time_start))
-                self.print_pwr_para_test_result(self.power_end)
+                self.print_pwr_para_test_result(self.power_end,err_box)
         #para test result
         elif isinstance(self.power_end[4], str) and self.power_end[5] == False:
             self.progress_bar.setValue(self.getTime(time_start))
-            self.print_pwr_para_test_result(self.power_end)
+            self.print_pwr_para_test_result(self.power_end,err_box)
 
         elif self.power_end[2] is True and self.power_end[5] is True:
             self.progress_bar.setValue(self.getTime(time_start))
-            self.print_pwr_para_test_result(self.power_end)
+            self.print_pwr_para_test_result(self.power_end,err_box)
 
         else:
             self.progress_bar.setValue(self.getTime(time_start))
             self.final_powr_tuple = self.power_end
 
 
-    def print_pwr_para_test_result(self,result):
+    def print_pwr_para_test_result(self,result,err_box):
 
-        self.build_error_box[0].setVisible(True)
-        # self.error_box.setVisible(True)
-        # self.temp_frame.setVisible(True)
-        # self.temp_frame.setAutoFillBackground(True)
 
         #pwr Failed test
         if result[2] is False and len(result) == 3:
-            self.build_error_box[0].setPalette(self.palette(255,139,119))
-            # self.temp_frame.setPalette(self.palette(255, 139, 119))
+            err_box[0].setPalette(self.palette(255,139,119))
+
             if isinstance(result[1],list):
-                x = 0
-                sensor = 0
                 for physical_num in result[1]:
                     lbl = self.create_label(0,"","Position " + str(physical_num) + " Wrong ID: Unexpected id returned", 10, 10, True, 100,
                                             100,150, 50)
-                    self.wrong_sensors_found_list.append(lbl)
-                    self.build_error_box[1].addWidget(self.wrong_sensors_found_list[sensor], x, 0, 2, 2)
-                    # self.temp_grid.addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
-                    x += 2
-                    sensor += 1
-                self.build_error_box[1].addWidget(self.build_update_btn,0,2,1,1)
-                self.build_error_box[1].addWidget(self.build_ignore_btn,0,4,1,1)
+                    self.error_messages.append(lbl)
+
+                err_box[1].addWidget(self.build_update_btn,0,2,1,1)
+                err_box[1].addWidget(self.build_ignore_btn,0,4,1,1)
                 self.build_update_btn.setVisible(True)
                 self.build_ignore_btn.setVisible(True)
             elif isinstance(result[1],str):
                 lbl = self.create_label(0,"",result[1], 10, 10, True, 0,0, 150, 50)
-                self.wrong_sensors_found_list.append(lbl)
-                self.build_error_box[1].addWidget(self.wrong_sensors_found_list[0], 0, 0, 0, 0)
-                # self.temp_grid.addWidget(self.wrong_sensors_found_list[0],0,0,150,50)
+                self.error_messages.append(lbl)
 
             elif isinstance(result[1],tuple):
                 lbl = self.create_label(0,"",result[1], 10, 10, True, 0,0, 150, 50)
-                self.wrong_sensors_found_list.append(lbl)
-                self.build_error_box[1].addWidget(self.wrong_sensors_found_list[0],0, 0, 0, 0)
-                # self.temp_grid.addWidget(self.wrong_sensors_found_list[0],0,0,150,50)#this might cause an error when you try to retest as this lbl, youll have to remove it from the widget or another option is to add it to the self.wrong_sensor_found list  list.
+                self.error_messages.append(lbl)
 
             elif isinstance(result[1],dict):
-                sensor = 0
-                x = 0
                 for phy_num in result[1]:
                     if result[1].get(phy_num) == 85:
                         lbl = self.create_label(0,"","Position " +str(phy_num)+" Power Failure: Sensor returns 85", 10, 10, True, 0, 0, 150, 50)
                     elif result[1].get(phy_num) > 90:
                         lbl = self.create_label(0,"","Position "+str(phy_num)+ " Failed: Sensor returns temperature higher than 90 or nothing", 10, 10, True, 0, 0, 150, 50)
-                    self.wrong_sensors_found_list.append(lbl)
-                    self.build_error_box[1].addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
-                    # self.temp_grid.addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
-                    sensor +=1
-                    x += 2
+                    self.error_messages.append(lbl)
 
-            # self.err_scroll_area.setWidget(self.temp_frame)
         #para test
         elif len(result) == 6 and result[2] is False and result[5] is False:
             if isinstance(result[4],str):
                 lbl = self.create_label(0,"",result[3]+"\n"+result[4], 10, 10, True, 0, 0, 150, 50)
-                self.wrong_sensors_found_list.append(lbl)
-                self.build_error_box[1].addWidget(self.wrong_sensors_found_list[0], 0, 0, 150, 50)
-                # self.temp_grid.addWidget(self.wrong_sensors_found_list[0], 0, 0, 150, 50)
+                self.error_messages.append(lbl)
+
             if isinstance(result[1],list) and isinstance(result[4],list):
                 x = 0
                 sensor = 0
@@ -1521,24 +1450,36 @@ class MainUtility(QMainWindow):
 
                     lbl = self.create_label(0,"","Position: " + str(physical_num) + " Failed id", 10, 10, True, 0,
                                             0, 150, 50)
-                    self.wrong_sensors_found_list.append(lbl)
-                    self.build_error_box.addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
-                    # self.temp_grid.addWidget(self.wrong_sensors_found_list[sensor], x, 0, 11, 11)
-                    x += 2
-                    sensor += 1
-            # self.err_scroll_area.setWidget(self.temp_frame)
+                    self.error_messages.append(lbl)
+
         #PASSED TEST
         elif result[2] is True and result[5] is True:
-            self.build_error_box[0].setPalette(self.palette(50, 205, 50))
+            err_box[0].setPalette(self.palette(50, 205, 50))
             lbl = self.create_label(0,"","Test Succesful!",10,10,True,0,0,150, 50)
-            self.wrong_sensors_found_list.append(lbl)
-            self.build_error_box[1].addWidget(self.wrong_sensors_found_list[0], 0, 0, 0, 0)
-            # self.success_lbl.setText("Test Successful!")
-            # self.success_print[1] = True
-            # self.temp_grid.addWidget(self.success_lbl,0,0,11,11)
-            # self.temp_frame.setPalette(self.palette(50, 205, 50))
-            # self.temp_frame.setLayout(self.temp_grid)
-            # self.err_scroll_area.setWidget(self.temp_frame)
+            self.error_messages.append(lbl)
+
+        self.print_to_err_box(err_box)
+
+    def print_to_err_box(self,box):
+        box[0].setVisible(True)
+        self.current_display_error_box = box.copy()
+
+        if len(self.error_messages) == 1:
+            box[1].addWidget(self.error_messages[0],0,0,11,11)
+
+        elif len(self.error_messages) > 1:
+            box[0].setPalette(self.palette(255,139,119))
+            x = 0
+            message = 0
+            for lbl in self.error_messages:
+                box[1].addWidget(lbl,x,0,11,11)
+                x += 2
+                # message += 1
+
+        self.build_gridLayout.addWidget(box[0], 12, 1, 2, 11)
+
+    def change_error_box(self):
+        self.current_display_error_box[0].setPalette(self.palette(50, 205, 50))
 
     def verify_Cable_Test(self):
         if self.has_protection_board() is True:
@@ -1765,6 +1706,7 @@ class MainUtility(QMainWindow):
         self.scan_finished = False
         self.success_print = clear()
         self.before.clear()
+        self.error_messages.clear()
         self.wrong_sensors_found_list.clear()
         self.settings.setValue("report_file_path", "/path/to/report/folder")
         # self.wake.terminate()
