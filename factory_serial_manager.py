@@ -33,6 +33,7 @@ class SerialManager(QObject):
         self.memory = ''
         self.counter = 0  # this counter is not the same as the views file but it does share the same value by -1
         self.new_Bool = False
+        self.program_eeprom_flag = False
         self.page_dialog = QDialog()
         self.check = False
         self.total_number_reached = False
@@ -313,11 +314,11 @@ class SerialManager(QObject):
                     if isinstance(verify_hex, list):
                         for hex in verify_hex:
                             concat_multiple_hex = concat_multiple_hex + str(hex) + ", "
-                        return ("Cable Verify Failed",
+                        return ("Cable Verify Failed\n",
                                 "Position: " + concat_multiple_hex + "\n Dont match Previously scanned", False)
 
                     elif verify_hex is False:
-                        return ("Cable Verify Failed", "Failed to read all sensors\n Please try again", False)
+                        return ("Cable Verify Failed\n", "Failed to read all sensors\n Please try again", False)
 
                     #Do temperature
                     if temperature_list is None or len(temperature_list) != len_of_dict or temperature_list == False:
@@ -328,7 +329,7 @@ class SerialManager(QObject):
                             if temperature_list != None and temperature_list != False and len(temperature_list) == len_of_dict:
                                 counter += 1
                             if tryout == 3:
-                                return ("Cable Verify Failed","Failed to read all sensors\n only "+str(len(temperature_list))+"/"+str(len_of_dict)
+                                return ("Cable Verify Failed\n","Failed to read all sensors\n only "+str(len(temperature_list))+"/"+str(len_of_dict)
                                         + "sensors found",False)
                             tryout += 1
 
@@ -350,7 +351,7 @@ class SerialManager(QObject):
                     else:
                         return ("Cable Verify Successful","All Sensors Passed Test",True)
             except:
-                 return ("Cable Verify Failed","There was an error with the test\n Please Try again",False)
+                 return ("Cable Verify Failed\n","There was an error with the test\n Please Try again",False)
 
     @pyqtSlot()
     def hex_or_temps_parser(self, key, port):
@@ -425,9 +426,10 @@ class SerialManager(QObject):
 
     @pyqtSlot()
     def scan_board(self):
-        self.flush_buffers()
+
         if self.ser.is_open:
             try:
+                self.flush_buffers()
                 self.call_func.emit()
 
             except:
@@ -483,15 +485,7 @@ class SerialManager(QObject):
             if error == QMessageBox.Ok:
                 self.page_dialog.close()
             return -1
-    # @pyqtSlot()
-    # def send_hex_to_display(self,hex):
-    #     if str(hex) not in self.hex_list:
-    #         self.counter += 1
-    #         self.hex_list.append(hex)
-    #         self.hex_memory.append(hex)
-    #         self.data_ready.emit(self.counter, hex)
-    #         if self.counter is self.total_pcba_num:
-    #             self.new_Bool = True
+
     @pyqtSlot()
     def messageBox(self,type,title,description,button):
         call = QDialog()
@@ -566,7 +560,6 @@ class SerialManager(QObject):
                 self.ser.write("tac-ee-load-ids 1 \r\n".encode())
                 for id in id_list:
                     self.ser.write((id + " \r\n").encode())
-                    time.sleep(.5)
 
 
                 # sensor Position loader
@@ -581,10 +574,27 @@ class SerialManager(QObject):
                 self.ser.write("config \r\n".encode())
                 look = self.ser.read_until(self.end).decode()
                 print("final check config:", look)
+                
+                self.program_eeprom_flag = True
 
             except:
                 self.ser.write(" \r\n".encode())
                 print("eeprom didnt work")
+    @pyqtSlot()
+    def get_eeprom(self):
+        if self.ser.is_open:
+            try:
+                if self.program_eeprom_flag is True:
+                    self.flush_buffers()
+                    self.ser.write("config \r\n".encode())
+                    read = self.ser.read_until(self.end).decode()
+                    split = read.split("\r\n")
+                    eeprom_id = split[17][6:]
+                    return eeprom_id
+
+            except:
+                return None
+
     def get_meta_data_info(self):
         meta_data_list= list()
         dt = date.today()
