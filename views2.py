@@ -1,24 +1,17 @@
+import csv
 import os
 import re
-import csv
 import sys
-import math
 import time
-import random as rand
-import multiprocessing as mp
-import Result_Page_Dialog
 import factory_serial_manager
-from multiprocessing import Process
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.Qt import QEvent, QInputEvent, QKeyEvent
-from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
-    QLineEdit, QComboBox, QGridLayout, QGroupBox, QHBoxLayout, QProgressBar,
-    QMessageBox, QAction, QActionGroup, QFileDialog, QDialog, QMenu, QTextEdit
-)
-
-from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import QSettings, Qt, QThread
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QPushButton, QApplication, QLabel,
+    QGridLayout, QGroupBox, QHBoxLayout, QProgressBar,
+    QMessageBox, QAction, QActionGroup, QFileDialog, QDialog, QMenu
+)
 
 VERSION_NUM = "1.1.4"
 
@@ -105,6 +98,7 @@ class MainUtility(QMainWindow):
         self.hex_list = list()
         self.hex_lbl_Dict = dict()
         self.hex_lbl_list = list()
+        self.total_sensor_ids = list()
         self.file_dict = dict()
         self.file_bool = False
         self.dtc_serial = str()
@@ -115,6 +109,7 @@ class MainUtility(QMainWindow):
         self.sensor_num = [False, 0]
         self.check = False
         self.program_eeprom_flag = False
+        self.pressed_flag = False
         self.physical_num = 1
         self.lsb = -1
         self.pcba_current_number = 1
@@ -188,7 +183,7 @@ class MainUtility(QMainWindow):
 
         self.calibrate_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.calibrate_btn.setGeometry(QtCore.QRect(655, 400, 180, 160))
-        self.calibrate_btn.setText("Calibrated")
+        self.calibrate_btn.setText("Calibrate")
         self.calibrate_btn.setFont(self.font(20, 75, True))
         self.calibrate_btn.clicked.connect(self.calibrateScreen)
 
@@ -1081,6 +1076,7 @@ class MainUtility(QMainWindow):
             if self.counter is self.sensor_num[1] + 1:
                 pop = QMessageBox.information(self, "End of PCBA", "Done!",
                                               QMessageBox.Ok)
+                self.sort_btn.setEnabled(False)
 
                 self.start_button.setEnabled(False)
 
@@ -1258,14 +1254,12 @@ class MainUtility(QMainWindow):
                     self.boardReplace()
             else:
                 self.newScan(self.msg_lineEdit.text())
-                call = QMessageBox.information(self.message, "Sort Button",
-                                               "Would you like to re-Enable the Sort Button? ",
-                                               QMessageBox.Yes | QMessageBox.No)
+                call = QMessageBox.information(self.message, "Done",
+                                               "Done ",
+                                               QMessageBox.Ok)
+                # self.sort_btn.setEnabled(True)
+                self.noButton()
 
-                if call == QMessageBox.Yes:
-                    self.yesButton()
-                if call == QMessageBox.No:
-                    self.noButton()
         except:
             warning = QMessageBox.critical(self.message, "Error", "Please Type in a number with in the boards!",
                                            QMessageBox.Ok)
@@ -1288,7 +1282,7 @@ class MainUtility(QMainWindow):
                 self.final_physical_order[new_hex] = self.final_physical_order.get(old_hex_stripped)
                 del self.final_physical_order[old_hex_stripped]
                 temp = int(old_hex_stripped, 16)
-                index = self.pcba_hexList.index(temp)
+                index = self.pcba_hexList.index(temp)#this is updated so that we can re-sort
                 self.pcba_hexList.remove(temp)
                 self.pcba_hexList.insert(index, temp)
                 break
@@ -1299,28 +1293,42 @@ class MainUtility(QMainWindow):
                 break
 
     def yesButton(self):
-        m = QMessageBox.warning(self.message, "Warning",
-                                "Are you sure you want to re-Sort? Doing so will re-organize all the boards! ",
+        m = QMessageBox.warning(self, "Warning",
+                                "Are you sure you want to re-Sort?",
                                 QMessageBox.Yes | QMessageBox.No)
         if m == QMessageBox.Yes:
             self.doubleCheck()
-        else:
-            self.noButton()
 
     def doubleCheck(self):
-        self.pcba_memory[self.physical_num - 2].setAutoFillBackground(False)
+        self.pcba_memory[self.physical_num - 2].setAutoFillBackground(True)#Was False
         self.pcba_memory.clear()
         self.physical_num = 0
-        self.sort_btn.setEnabled(True)
-        self.message.close()
+        self.final_physical_order.clear()
 
     def noButton(self):
         self.message.close()
 
     def OneWireSort(self):
+
+        if self.pressed_flag is True:
+            call = QMessageBox.information(self, "Sort Button",
+                                           "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
+                                           QMessageBox.Yes | QMessageBox.No)
+
+            if call == QMessageBox.Yes:
+                self.yesButton()
+                self.lsb = -1
+                self.final_order.clear()
+                self.order_dict.clear()
+                self.physical_num = 1
+
+        self.pressed_flag = True
+
+
         zero_list = []
         one_list = []
         bin_hex_list = []
+
 
         for hex in self.pcba_hexList:
             bin_hex_list.append(bin(hex))
@@ -1374,6 +1382,9 @@ class MainUtility(QMainWindow):
             self.final_physical_order[self.hex_list[count]] = self.final_order[run]
             count += 1
 
+        for key in self.final_physical_order:
+            self.total_sensor_ids.append(key)
+
         self.file_btn.setEnabled(False)
         self.right_arrow_btn.setEnabled(True)
         self.highlight(self.physical_num, True)
@@ -1387,7 +1398,6 @@ class MainUtility(QMainWindow):
         count = 1
         last = -2
         k = key
-        first_index = 0
 
         for run in range(size):
             hold = list[0]
@@ -1432,12 +1442,8 @@ class MainUtility(QMainWindow):
         self.power_end = self.sm.Test_Cable(self.sensor_num[1], self.final_physical_order, self.progress_bar,
                                                 time_start, protection_board,build_test = build_test)
         self.progress_bar.setValue(self.getTime(time_start))
-
+        # self.update_list_of_sensor_ids(new_list = self.sm.get_hex_ids())
         #power test result
-        has_protection_board = self.sm.check_eeprom()
-        if isinstance(has_protection_board,tuple):
-            self.print_pwr_para_test_result(has_protection_board,err_box,build_test)
-            return
 
         if self.power_end is None:
             self.progress_bar.setValue(self.getTime(time_start))
@@ -1463,7 +1469,6 @@ class MainUtility(QMainWindow):
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
             if build_test is False:
                 self.eeprom_btn.setEnabled(True)
-
         else:
             self.progress_bar.setValue(self.getTime(time_start))
             self.final_powr_tuple = self.power_end
@@ -1471,9 +1476,15 @@ class MainUtility(QMainWindow):
         if self.pass_flag is True:
             self.program_tab.setEnabled(True)
 
+        #temperature display
         if self.power_end[2] is True and self.power_end[-1] is True:
             temps = self.sm.get_temps()
-            self.update_temperatures(temps,build_test)
+            hex = self.sm.get_hex_ids()
+            self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
+        else:
+            temps = self.sm.get_temps()
+            hex = self.sm.get_hex_ids()
+            self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
 
     def print_pwr_para_test_result(self,result,err_box,build_test = True):
         #pwr Failed test
@@ -1576,17 +1587,66 @@ class MainUtility(QMainWindow):
             self.prog_err_box_contents[1].addWidget(box[0],11,1,2,11)
             # self.program_gridLayout.addWidget(box[0],12,1,2,11)
 
-    def update_temperatures(self,temps_list,build):
-        index = 0
+    def update_temperatures(self,temps_list,hex_list,build_test,total_sensors):
+        try:
+            has_protection_board = self.sm.check_eeprom()
+            index = 0
+            for id in hex_list:
+                if id not in self.total_sensor_ids:
+                    self.update_list_of_sensor_ids(index = 0,insert_id=True,new_id=id)
 
-        if build:
-            for lbl in self.build_live_temperature_list:
-                lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
-                index += 1
+
+
+            if build_test:
+                if total_sensors == len(temps_list):
+                    for lbl in self.build_live_temperature_list:
+                        lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
+                        index += 1
+                else:
+                    if isinstance(has_protection_board, tuple):
+                        self.build_live_temperature_list[index].setText("--C" + chr(176))
+                        index +=1
+
+                    for key in self.total_sensor_ids:
+                        if key in hex_list:
+                            self.build_live_temperature_list[index].setText(str(temps_list[hex_list.index(key)])[:4]+"C"+chr(176))
+                        else:
+                            self.build_live_temperature_list[index].setText("--C" + chr(176))
+                        index += 1
+
+            #program test and passed
+            else:
+                if total_sensors == len(temps_list):
+                    for lbl in self.program_live_temperature_list:
+                        lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
+                        index += 1
+                else:
+                    if isinstance(has_protection_board, tuple):
+                        self.program_live_temperature_list[index].setText("--C" + chr(176))
+                        index +=1
+
+                    for key in self.total_sensor_ids:
+                        if key in hex_list:
+                            self.program_live_temperature_list[index].setText(str(temps_list[hex_list.index(key)])[:4]+"C"+chr(176))
+                        else:
+                            self.program_live_temperature_list[index].setText("--C"+ chr(176))
+                        index += 1
+        except:
+            inform = QMessageBox.information(self,"No sensors Detected","There was an error, No sensors detected")
+            return
+
+    def update_list_of_sensor_ids(self,new_list = None,new_id = None,remove_id = False,replace_id = False,index = None,insert_id = False):
+        if remove_id:
+            self.total_sensor_ids.remove(new_id)
+        elif new_list is not None:
+            self.total_sensor_ids += new_list
+        elif replace_id:
+            self.total_sensor_ids.insert(index,new_id)
+            self.total_sensor_ids.pop(index+1)
+        elif insert_id:
+            self.total_sensor_ids.insert(index,new_id)
         else:
-            for lbl in self.program_live_temperature_list:
-                lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
-                index += 1
+            self.total_sensor_ids.append(new_id)
 
     def change_error_box(self):
         self.current_display_error_box[0].setPalette(self.palette(50, 205, 50))
@@ -1833,11 +1893,13 @@ class MainUtility(QMainWindow):
                 self.pcba_imgs.clear()
                 self.file_dict.clear()
                 self.file_bool = False
+                self.pressed_flag = False
                 self.desc_group.deleteLater()
                 self.pcba_groupBox.deleteLater()
                 self.frame_group.deleteLater()
                 self.scan_tab.setEnabled(False)
                 self.build_tab.setEnabled(False)
+                self.total_sensor_ids.clear()
                 self.program_tab.setEnabled(False)
                 self.report_dir = ""
                 self.hex_number.clear()

@@ -226,12 +226,6 @@ class SerialManager(QObject):
                 self.para_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
 
                 if len(self.pwr_temps) != total_sensor_amount:
-                    retry = list()
-                    timeout = 0
-                    while len(retry) != total_sensor_amount or timeout != 5:
-                        retry = self.hex_or_temps_parser(1, "1")
-                        timeout += 1
-                    if timeout == 5:
                         self.ser.write("sonic-pwr 1\r\n".encode())
                         self.ser.write("strong-pu 0 \r\n".encode())
                         return ("Missing temps", "failed to read temperatures", False)
@@ -282,21 +276,21 @@ class SerialManager(QObject):
         self.flush_buffers()
         if self.ser.is_open:
             try:
-
                 error_pcba = list()
 
                 parser = self.pwr_ids.copy()
-
+                pcba_dictionary_copy = pcba_dict.copy()
                 if parser is None or len(parser) != len_of_dict or parser == False:
-                    counter = 0
-                    tryout = 0  # this var is to keep it from running endlessly
-                    while counter != 1:
-                        parser = self.hex_or_temps_parser(0, "1")
-                        if parser != None and parser != False and len(parser) == len_of_dict :
-                            counter += 1
-                        if tryout == 3:
-                            return ("Failed Reading Hex Id's","Failed to read all sensors\n"+str(len(parser))+" out of "+str(len_of_dict),False)
-                        tryout += 1
+                    parser = self.hex_or_temps_parser(0, "1")
+
+                    if len(parser) != len_of_dict :
+                        for id in pcba_dictionary_copy:
+                            if id not in parser:
+                                return ("Missing Sensor","Position: "+str(pcba_dictionary_copy.get(id)+1)+" Missing Sensor ",False)
+                        return ("Fail","Missing Protection Board",False)
+                        # return ("Missing Protection Board","Missing Protection Board!",False)
+                    else:
+                        return ("Failed Test","Failed to read sensors, Please try again",False)
                 #this checks for same hex #, if wrong or bad return the physical number
                 pcba_replica = pcba_dict.copy()
                 for pcba in parser:
@@ -355,6 +349,7 @@ class SerialManager(QObject):
 
                     pcba = (hex_list,temp_list)
                     return pcba
+
                 elif key ==3:
                     for hex in range(3, len(temps)):
                         hex_list.append(temps[hex][6:23])
@@ -454,6 +449,7 @@ class SerialManager(QObject):
         message = QMessageBox.critical(call,title,description,button)
         if message == QMessageBox.Ok:
             return message
+
     @pyqtSlot()
     def board_replace_scan(self):
         self.wake_up_call()
@@ -470,7 +466,7 @@ class SerialManager(QObject):
                     hex_line = data_split[2]
                     sensor_num = hex_line[2:3]
 
-                    if sensor_num is not "0" and len(data_split) > 3:
+                    if sensor_num == "1" and len(data_split) > 3:
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
                         hex_number = hex_number + " 28"  # family code
