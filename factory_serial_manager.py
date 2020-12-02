@@ -37,6 +37,7 @@ class SerialManager(QObject):
         self.page_dialog = QDialog()
         self.check = False
         self.total_number_reached = False
+        self.unchanged_ids = list()
         self.hex_list = []
         self.pwr_ids = list()
         self.pwr_temps = list()
@@ -210,7 +211,14 @@ class SerialManager(QObject):
             except ValueError:
                 value_err = QMessageBox.critical(self.page_dialog, "Parsing Error",
                                                  "There was an Error parsing the information\n please try to re-connect or rescan the sensor")
-
+        else:
+            error = QMessageBox.critical(self.page_dialog, "Port not found",
+                                         "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
+                                         QMessageBox.Ok)
+            self.page_dialog.show()
+            if error == QMessageBox.Ok:
+                self.page_dialog.close()
+            return -1
     @pyqtSlot()
     def parasidic_Test(self, total_sensor_amount, pcba_id_dict):
         # global result_tuple
@@ -261,7 +269,9 @@ class SerialManager(QObject):
                     result_tuple = ("Successful Parasidic Results", self.para_dict, True)
 
                 self.ser.write("sonic-pwr 1\r\n".encode())
+                garbage = self.ser.read_until(self.end)
                 self.ser.write("strong-pu 0 \n\r".encode())
+                gabage = self.ser.read_until(self.end)
 
                 return result_tuple
 
@@ -307,7 +317,7 @@ class SerialManager(QObject):
                  return ("Cable Verify Failed\n","There was an error with the test\n Please Try again",False)
 
     @pyqtSlot()
-    def hex_or_temps_parser(self, key, port):
+    def hex_or_temps_parser(self, key, port,optional = False):
         '''This function grabs either the hex or temps from the cable and returns it as a list'''
         if self.ser.is_open:
             try:
@@ -321,6 +331,7 @@ class SerialManager(QObject):
                         hex_list.append(temps[hex][4:24].replace(" ", "") + "28")
                     hex_list.pop()
                     hex_list.pop()
+
                     return hex_list
 
                 elif key == 1 and isinstance(temps, list) and temps[2][2] != '0':
@@ -336,6 +347,7 @@ class SerialManager(QObject):
                     return temp_list
 
                 elif key == 2 and isinstance(temps,list)and temps[2][2] != '0' :
+
                     for hex in range(3, len(temps)):
                         hex_list.append(temps[hex][4:24] + "28")
                     hex_list.pop()
@@ -351,11 +363,17 @@ class SerialManager(QObject):
                     return pcba
 
                 elif key ==3:
-                    for hex in range(3, len(temps)):
-                        hex_list.append(temps[hex][6:23])
-                    hex_list.pop()
-                    hex_list.pop()
-                    return hex_list
+                    if optional:
+                        for hex in range(3, len(temps)):
+                            hex_list.append(temps[hex][6:24].strip())
+                        hex_list.pop()
+                        hex_list.pop()
+                        return hex_list
+                    else:
+                        for hex in range(3, len(temps)):
+                            self.unchanged_ids.append(temps[hex][6:24].strip())
+                        self.unchanged_ids.pop()
+                        self.unchanged_ids.pop()
             except:
                 return False
 
@@ -400,6 +418,13 @@ class SerialManager(QObject):
 
                                           " Please connect the serial port in the tab above")
 
+    def get_unchanged_ids(self):
+        if len(self.unchanged_ids) == 0:
+            self.unchanged_ids = self.hex_or_temps_parser(3,"1",True)
+            return self.unchanged_ids
+
+        return self.unchanged_ids
+
     @pyqtSlot()
     def pcba_sensor(self):
 
@@ -428,8 +453,6 @@ class SerialManager(QObject):
                             self.data_ready.emit(self.counter, hex_number)
                             if self.counter is self.total_pcba_num:
                                 self.new_Bool = True
-
-
 
             except serial.serialutil.SerialException:
                 self.no_port_sel.emit()
@@ -483,7 +506,7 @@ class SerialManager(QObject):
                                                  "There was an error trying to load the board")
 
     @pyqtSlot()
-    def eeprom_program(self,top_list,sensor_positions_list):
+    def eeprom_program(self,top_list,sensor_positions_list,hex_list_to_be_sent):
         if self.ser.is_open:
             try:
                 self.flush_buffers()
@@ -507,35 +530,41 @@ class SerialManager(QObject):
 
                 #load ids
                 self.flush_buffers()
-                id_list = self.hex_or_temps_parser(3,"1")
-                if id_list is False or len(id_list) != len(sensor_positions_list):
+                if hex_list_to_be_sent is False or len(hex_list_to_be_sent) != len(sensor_positions_list):
                     show = QMessageBox.critical(self.page_dialog,"warning","Failed to program\n Please Try Again")
                     return
 
-                self.ser.write("tac-ee-load-ids 1 \r\n".encode())
-                for id in id_list:
-                    self.ser.write((id + " \r\n").encode())
-                    time.sleep(.5)
-
                 # sensor Position loader
+                self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+                for id in hex_list_to_be_sent:
+                    time.sleep(.5)
+                    self.ser.write((id + " \r\n").encode())
+
                 self.flush_buffers()
                 self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
                 for positions in sensor_positions_list:
-                    self.ser.write((positions + " \r\n").encode())
                     time.sleep(.5)
-                
+                    self.ser.write((positions + " \r\n").encode())
+
                 self.program_eeprom_flag = True
 
             except:
                 self.ser.write(" \r\n".encode())
 
     @pyqtSlot()
-    def get_eeprom(self):
+    def get_eeprom(self,other_call = False):
         if self.ser.is_open:
             try:
                 if self.program_eeprom_flag is True:
                     return self.eeprom
-                return False
+                elif other_call is True:
+                    if self.eeprom == "":
+                        self.check_eeprom()
+                        if self.eeprom =="":
+                            return False
+                    return self.eeprom
+                else:
+                    return False
             except:
                 return None
 
@@ -557,12 +586,27 @@ class SerialManager(QObject):
 
     def get_meta_data_info(self):
         meta_data_list= list()
-        dt = date.today()
-        current_date = dt.strftime("%m%d%y")
+        current_date = self.get_date()
         meta_data_list.append("date created @ "+current_date)
         meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")
         meta_data_list.append("hardware @ 1.0d")
         return meta_data_list
+
+    def get_date(self,with_dash = False):
+        dt = date.today()
+        if with_dash:
+             return dt.strftime("%m-%d-%y")
+        else:
+            return dt.strftime("%m%d%y")
+
+    def check_port(self):
+        if self.ser.is_open:
+            return True
+        else:
+            error = QMessageBox.critical(self.page_dialog, "Port closed",
+                                         "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
+                                         QMessageBox.Ok)
+            return False
 
     @pyqtSlot(int)
     def sleep(self, interval):

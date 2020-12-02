@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import time
+import Continuation
 import factory_serial_manager
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QSettings, Qt, QThread
@@ -90,11 +91,16 @@ class MainUtility(QMainWindow):
         # these are variables and list used throught the entire program
         self.pcba_imgs = list()
         self.pcba_frame_Dict = dict()
+        self.continuation_flag = False
         self.pcba_memory = list()
         self.pcba_frame_Highlight = list()
+        self.file_specs = list()
+        self.report_fail_flag = False
+        self.unchanged_hex_ids = list()
         self.hex_number = list()
         self.pcba_hexDict = dict()
         self.pcba_hexList = list()
+        self.report_dir = str()
         self.hex_list = list()
         self.hex_lbl_Dict = dict()
         self.hex_lbl_list = list()
@@ -160,7 +166,7 @@ class MainUtility(QMainWindow):
         self.main_scroll_window.setGeometry(QtCore.QRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
 
         self.logo_img = QtWidgets.QLabel(self.main_scroll_window)  # self.main_scroll_window)
-        self.logo_img.setGeometry(QtCore.QRect(275, 100, 900, 250))
+        self.logo_img.setGeometry(QtCore.QRect(175, 100, 1100, 250))
         self.logo_img.setPixmap(QtGui.QPixmap(self.cable_image_list[5]))
         self.logo_img.setScaledContents(True)
         self.logo_img.setObjectName("logo_img")
@@ -288,7 +294,6 @@ class MainUtility(QMainWindow):
         self.sort_btn.setEnabled(self.sensor_num[0])
         self.sort_btn.clicked.connect(self.OneWireSort)
 
-
         self.replace_btn_frame = self.create_square_frame(0)
         self.replace_btn = QPushButton(self.replace_btn_frame)
         self.replace_btn.setText("Replace \nSensor\n Board")
@@ -354,21 +359,21 @@ class MainUtility(QMainWindow):
         self.build_error_box = self.get_err_display_box()
         self.build_error_box[0].setVisible(False)
 
-        self.build_update_btn_frame = self.create_square_frame(0)
-        self.build_update_btn = QtWidgets.QPushButton(self.build_update_btn_frame)
-        self.build_update_btn.setText("Update")
-        self.build_update_btn.setFont(self.font(10, 10, True))
-        self.build_update_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        self.build_update_btn.setVisible(False)
+        # self.build_update_btn_frame = self.create_square_frame(0)
+        # self.build_update_btn = QtWidgets.QPushButton(self.build_update_btn_frame)
+        # self.build_update_btn.setText("Update")
+        # self.build_update_btn.setFont(self.font(10, 10, True))
+        # self.build_update_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
+        # self.build_update_btn.setVisible(False)
         # self.build_update_btn.clicked.connect('''function to update button''')
 
-        self.build_ignore_btn_frame = self.create_square_frame(0)
-        self.build_ignore_btn = QtWidgets.QPushButton(self.build_ignore_btn_frame)
-        self.build_ignore_btn.setText("Ignore")
-        self.build_ignore_btn.setFont(self.font(10, 10, True))
-        self.build_ignore_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        self.build_ignore_btn.setVisible(False)
-        self.build_ignore_btn.clicked.connect(self.change_error_box)
+        # self.build_ignore_btn_frame = self.create_square_frame(0)
+        # self.build_ignore_btn = QtWidgets.QPushButton(self.build_ignore_btn_frame)
+        # self.build_ignore_btn.setText("Ignore")
+        # self.build_ignore_btn.setFont(self.font(10, 10, True))
+        # self.build_ignore_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
+        # self.build_ignore_btn.setVisible(False)
+        # self.build_ignore_btn.clicked.connect(self.change_error_box)
 
         self.build_dtc_serial_lbl = QtWidgets.QLabel()
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
@@ -428,7 +433,7 @@ class MainUtility(QMainWindow):
         self.final_test_btn.setText("Final Test")
         self.final_test_btn.setFont(self.font(10, 10, True))
         self.final_test_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        # final_test_btn.clicked.connect(self.set_report_location)
+        self.final_test_btn.setEnabled(False)
         self.final_test_btn.clicked.connect(self.csv)
 
         self.prog_dtc_serial_lbl = QtWidgets.QLabel()
@@ -836,6 +841,8 @@ class MainUtility(QMainWindow):
 
     def prep_information(self):
         """ Grabs the file path for the Select File"""
+        if self.sm.check_port() is False:
+            return
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
@@ -849,11 +856,17 @@ class MainUtility(QMainWindow):
 
             for x in file:
                 self.file_contents.append(x)
+            file_desc = list()
 
-            # this loop splits info into individual list
-            file_desc = []
-            for descript_cont in range(1, 7):
-                file_desc.append(self.file_contents[descript_cont].split(","))
+            if "Sort" in self.file_contents[0]:
+                self.continuation_flag = True
+                self.cont = self.continuation_of_previously_scanned()
+                file_desc = self.cont.get_description_contents()
+            else:
+                # this loop splits info into individual list
+
+                for descript_cont in range(1, 7):
+                    file_desc.append(self.file_contents[descript_cont].split(","))
 
             # top labels for each page
             self.dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
@@ -861,9 +874,12 @@ class MainUtility(QMainWindow):
             self.prog_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
             self.meta_data_serial = file_desc[0][1]
 
-            self.file_specs = []
-            for content in range(7, len(self.file_contents)):
-                self.file_specs.append(self.file_contents[content].split(","))
+            if self.continuation_flag:
+                self.file_specs = self.cont.get_file_specifications()
+
+            else:
+                for content in range(7, len(self.file_contents)):
+                    self.file_specs.append(self.file_contents[content].split(","))
 
             if self.has_protection_board() is True:
                 self.sensor_num[1] = int(file_desc[2][1]) - 1
@@ -908,10 +924,10 @@ class MainUtility(QMainWindow):
             desc_lbl[11].setTextFormat(Qt.AutoText)
 
             self.file_description = file_desc.copy()
-            comp_lbl = []
-            mold_lbl = []
-            section_lbl = []
-            cable_lbl = []
+            comp_lbl = list()
+            mold_lbl = list()
+            section_lbl = list()
+            cable_lbl = list()
             addi = 0
             # this for loop makes a label list based on the previous file_spec info
             for lbl in self.file_specs:
@@ -1011,6 +1027,21 @@ class MainUtility(QMainWindow):
             self.get_connector_type()
             self.get_RA_mold()
             self.get_length_of_sensors()
+
+            if self.continuation_flag:
+                # self.scan_tab.setEnabled(False)
+                self.sort_btn.setEnabled(False)
+                self.start_button.setEnabled(False)
+                # self.pcba_hexList = self.cont.get_hex_list()
+                self.build_tab.setEnabled(True)
+                hex_list = self.cont.get_hex_list(with_whitespace = True,with_family_code = True)
+                num = 1
+                for hex in hex_list:
+                    self.buffer(num,hex)
+                    num+=1
+                self.OneWireSort()
+                self.program_tab.setEnabled(True)
+
         except:
             error = QMessageBox.critical(self, "Erorr", " Incorrect file. Please insert a .csv extension type",
                                          QMessageBox.Ok)
@@ -1058,6 +1089,10 @@ class MainUtility(QMainWindow):
         font.setWeight(weigth)
         return font
 
+    def continuation_of_previously_scanned(self):
+        cont = Continuation.Continuation(self.file_contents)
+        return cont
+
     def scan_board(self):
         answer = None
         help = QMessageBox()
@@ -1090,6 +1125,7 @@ class MainUtility(QMainWindow):
         self.pcbaImgInfo(number, hexadecimal)
 
     def pcbaImgInfo(self, num, hexD):
+        stripped_hex = hexD.strip()
         pcba_frame = QtWidgets.QFrame()
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
@@ -1105,13 +1141,16 @@ class MainUtility(QMainWindow):
         self.hex_number_lbl.setGeometry(QtCore.QRect(15, 77, 160, 16))
         self.hex_number_lbl.setFont(self.font(18, 18, True))
 
-        new_info = hexD.replace(" ", "")
+        without_family_code_id = stripped_hex[:-3]
+        self.unchanged_hex_ids.append(without_family_code_id)
+
+        new_info = stripped_hex.replace(" ", "")
         temp = int(new_info, 16)
         self.hex_list.append(new_info)
         self.pcba_hexList.append(temp)
 
-        self.pcba_frame_Highlight.append(hexD)
-        self.pcba_hexDict[hexD] = self.counter
+        self.pcba_frame_Highlight.append(stripped_hex)
+        self.pcba_hexDict[stripped_hex] = self.counter
         self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
         self.hex_lbl_list.append(self.hex_number_lbl)
 
@@ -1167,11 +1206,13 @@ class MainUtility(QMainWindow):
         self.counter += 1
 
         if self.counter is self.sensor_num[1] + 1:
-            pop = QMessageBox.information(self, "Done",
-                                          "Done!")
-            self.start_button.setEnabled(False)
+            if self.continuation_flag is False:
+                pop = QMessageBox.information(self, "Done", "Done!")
+                self.temporary_csv()
+                self.start_button.setEnabled(False)
         else:
-            self.sm.scan_board()
+            if self.continuation_flag is False:
+                self.sm.scan_board()
 
     def highlight(self, nextNum, rightClick):
 
@@ -1267,19 +1308,24 @@ class MainUtility(QMainWindow):
                 self.message.close()
                 self.boardReplace()
 
-    def newScan(self, phy_num):
-        scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
-        if scan_new == QMessageBox.Ok:
-            new_scanned_hex = self.sm.board_replace_scan()
-
+    def newScan(self, phy_num,update_hex = None):
+        if update_hex is None:
+            scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
+            if scan_new == QMessageBox.Ok:
+                new_scanned_hex = self.sm.board_replace_scan()
+        else:
+            new_scanned_hex = update_hex
         # this loop updates self.pcba_hexList
         for oldHex in self.pcba_hexDict:
-
             if self.pcba_hexDict[oldHex] is int(phy_num):
                 old_hex_stripped = oldHex.replace(" ", "")
                 new_hex = new_scanned_hex.replace(" ","")
 
+                self.unchanged_hex_ids.insert(self.unchanged_hex_ids.index(oldHex[:-3]),new_scanned_hex)
+                self.unchanged_hex_ids.remove(oldHex[:-3])
                 self.final_physical_order[new_hex] = self.final_physical_order.get(old_hex_stripped)
+                self.update_list_of_sensor_ids(new_id=old_hex_stripped, remove_id=True)#then add the new hex
+                self.update_list_of_sensor_ids(new_id=new_hex)
                 del self.final_physical_order[old_hex_stripped]
                 temp = int(old_hex_stripped, 16)
                 index = self.pcba_hexList.index(temp)#this is updated so that we can re-sort
@@ -1309,26 +1355,33 @@ class MainUtility(QMainWindow):
         self.message.close()
 
     def OneWireSort(self):
+        if self.report_fail_flag and self.continuation_flag is False:
+            inform = QMessageBox.warning(self,"failed save temp","Sensors failed to save into a temporary file\n Would you like to re-try?",QMessageBox.Yes|QMessageBox.No)
+            if inform == QMessageBox.Yes:
+                self.temporary_csv()
+                self.OneWireSort()
+            else:
+                self.report_fail_flag = False
+                self.OneWireSort()
+        else:
+            if self.continuation_flag is False:
+                if self.pressed_flag is True:
+                    call = QMessageBox.information(self, "Sort Button",
+                                                   "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
+                                                   QMessageBox.Yes | QMessageBox.No)
 
-        if self.pressed_flag is True:
-            call = QMessageBox.information(self, "Sort Button",
-                                           "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
-                                           QMessageBox.Yes | QMessageBox.No)
+                    if call == QMessageBox.Yes:
+                        self.yesButton()
+                        self.lsb = -1
+                        self.final_order.clear()
+                        self.order_dict.clear()
+                        self.physical_num = 1
 
-            if call == QMessageBox.Yes:
-                self.yesButton()
-                self.lsb = -1
-                self.final_order.clear()
-                self.order_dict.clear()
-                self.physical_num = 1
-
-        self.pressed_flag = True
-
+            self.pressed_flag = True
 
         zero_list = []
         one_list = []
         bin_hex_list = []
-
 
         for hex in self.pcba_hexList:
             bin_hex_list.append(bin(hex))
@@ -1354,8 +1407,7 @@ class MainUtility(QMainWindow):
 
         for order in self.final_order:  # order grabs the binary string
             for place in self.order_dict:  # place grabs the physical location
-                if order is self.order_dict[
-                    place]:  # searches throught the binary strings in order dict and puts them in final order
+                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
                     self.final_order[order] = place
                     self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
                     key_count += 1
@@ -1430,8 +1482,6 @@ class MainUtility(QMainWindow):
         if build_test is True:
             self.build_error_box[0].setVisible(False)
             self.build_error_box[1].addWidget(err_box[0])
-            self.build_update_btn.setVisible(False)
-            self.build_ignore_btn.setVisible(False)
             self.progress_bar.setValue(self.getTime(time_start))
 
         else:
@@ -1441,10 +1491,11 @@ class MainUtility(QMainWindow):
 
         self.power_end = self.sm.Test_Cable(self.sensor_num[1], self.final_physical_order, self.progress_bar,
                                                 time_start, protection_board,build_test = build_test)
+        if self.power_end == -1:
+            return
         self.progress_bar.setValue(self.getTime(time_start))
-        # self.update_list_of_sensor_ids(new_list = self.sm.get_hex_ids())
-        #power test result
 
+        #power test result
         if self.power_end is None:
             self.progress_bar.setValue(self.getTime(time_start))
             self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False),err_box,build_test)
@@ -1469,6 +1520,7 @@ class MainUtility(QMainWindow):
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
             if build_test is False:
                 self.eeprom_btn.setEnabled(True)
+
         else:
             self.progress_bar.setValue(self.getTime(time_start))
             self.final_powr_tuple = self.power_end
@@ -1497,10 +1549,19 @@ class MainUtility(QMainWindow):
                                             100,150, 50)
                     self.error_messages.append(lbl)
                 if build_test is True:
-                    err_box[1].addWidget(self.build_update_btn,0,6,2,2)
-                    err_box[1].addWidget(self.build_ignore_btn,0,8,2,2)
-                    self.build_update_btn.setVisible(True)
-                    self.build_ignore_btn.setVisible(True)
+                    change = QMessageBox.information(self,"Options","Would you like to update or ignore the new board?",QMessageBox.Apply|QMessageBox.Ignore)
+                    if change == QMessageBox.Ignore:
+                        pass
+                    elif change == QMessageBox.Apply:
+                        recent_hex_list = self.sm.hex_or_temps_parser(3,"1",optional= True)
+                        check = self.sm.get_hex_ids()
+                        protection_board = self.get_protection_board_id(1)
+                        recent_hex_list.remove(protection_board)
+                        for hex in self.unchanged_hex_ids:
+                            if hex in recent_hex_list:
+                                recent_hex_list.remove(hex)
+
+                        self.newScan(self.power_end[1][0],update_hex=recent_hex_list[0])
 
             elif isinstance(result[1],str):
                 lbl = self.create_label(0,"",result[1], 10, 10, True, 0,0, 150, 50)
@@ -1591,11 +1652,10 @@ class MainUtility(QMainWindow):
         try:
             has_protection_board = self.sm.check_eeprom()
             index = 0
-            for id in hex_list:
-                if id not in self.total_sensor_ids:
-                    self.update_list_of_sensor_ids(index = 0,insert_id=True,new_id=id)
-
-
+            if isinstance(has_protection_board,bool):
+                for id in hex_list:
+                    if id not in self.total_sensor_ids:
+                        self.update_list_of_sensor_ids(index = 0,insert_id=True,new_id=id)
 
             if build_test:
                 if total_sensors == len(temps_list):
@@ -1613,7 +1673,6 @@ class MainUtility(QMainWindow):
                         else:
                             self.build_live_temperature_list[index].setText("--C" + chr(176))
                         index += 1
-
             #program test and passed
             else:
                 if total_sensors == len(temps_list):
@@ -1637,7 +1696,10 @@ class MainUtility(QMainWindow):
 
     def update_list_of_sensor_ids(self,new_list = None,new_id = None,remove_id = False,replace_id = False,index = None,insert_id = False):
         if remove_id:
-            self.total_sensor_ids.remove(new_id)
+            try:
+                self.total_sensor_ids.remove(new_id)
+            except:
+                return
         elif new_list is not None:
             self.total_sensor_ids += new_list
         elif replace_id:
@@ -1734,6 +1796,21 @@ class MainUtility(QMainWindow):
                 self.ra_mold[mold[0][-1]] = False
             counter += 1
 
+    def get_protection_board_id(self,key):
+        if key is 0:
+            ids = self.sm.get_hex_ids()
+            for id in self.final_physical_order:
+                if id in ids:
+                    ids.remove(id)
+            return ids[0]
+        else:
+            id_list = self.sm.get_unchanged_ids()
+            for id in self.unchanged_hex_ids:
+                if id in id_list:
+                    id_list.remove(id)
+                # elif id in self.unchanged_hex_ids:
+            return id_list[0]
+
     def has_protection_board(self):
         protection_board = self.file_specs[3][0]
         pb = protection_board[:10]
@@ -1768,17 +1845,27 @@ class MainUtility(QMainWindow):
         eeprom_box = self.get_err_display_box()
         eeprom_box[0].setVisible(False)
         self.prog_err_box_contents[1].addWidget(eeprom_box[0])
-        # self.prog_err_box_contents[1].setVisible(False)
 
         metaData_info_list = list()
         lead = self.file_description[4][1][:-1]
         metaData_info_list.append("serial @ "+self.meta_data_serial)
         metaData_info_list.append("lead @ "+lead)
         sensor_positions_list = self.get_sensor_positions()
-        #grab serial num info and lead info
-        self.sm.eeprom_program(metaData_info_list,sensor_positions_list)
+
+        if self.continuation_flag:
+            self.unchanged_hex_ids = self.cont.get_hex_list(with_whitespace = True)
+            protection_board= self.get_protection_board_id(1)
+            self.unchanged_hex_ids.insert(0,protection_board)
+
+        else:
+            protection_board = self.get_protection_board_id(1)
+            self.unchanged_hex_ids.insert(0,protection_board)
+            #grab serial num info and lead info
+        self.sm.eeprom_program(metaData_info_list,sensor_positions_list,self.unchanged_hex_ids)
 
         self.programmed_success_message = "EEProm Program Successful!"
+        self.final_test_btn.setEnabled(True)
+        self.eeprom_btn.setEnabled(False)
         self.print_to_err_box(eeprom_box, 1)
         # self.print_to_err_box(self.prog_err_box_contents[1],1)
 
@@ -1795,8 +1882,13 @@ class MainUtility(QMainWindow):
         sensor_positions.pop()
         return sensor_positions
 
-    def get_eeprom_id(self):
-        eeprom = self.sm.get_eeprom()
+    def get_eeprom_id(self,other_call = False,temp_csv = False):
+        eeprom = self.sm.get_eeprom(other_call)
+
+        if temp_csv is True:
+            if isinstance(eeprom,str):
+                return (eeprom,True)
+            return (eeprom,False)
         if eeprom is None or eeprom is False:
             return (eeprom,False)
         else:
@@ -1812,6 +1904,51 @@ class MainUtility(QMainWindow):
         hexlist = self.sm.hex_or_temps_parser(3,"1")
         return hexlist
 
+    def temporary_csv(self):
+        try:
+            hexlist = self.unchanged_hex_ids.copy()
+            date = self.sm.get_date(True)
+
+            if self.report_dir is "":
+                pathway = QMessageBox.warning(self, "Select Path", "Please select a directory to load your temporary csv document",
+                                              QMessageBox.Ok)
+                if pathway == QMessageBox.Ok:
+                    self.set_report_location()
+            n = 0
+            for detail in self.file_specs:
+                self.file_specs[n][-1] = detail[-1].replace("\n", "")
+                n += 1
+
+            final_list = self.file_description + self.file_specs
+            x = 0
+            h = 0
+            with open(self.report_dir + "/DTC-" + final_list[0][1] + "_Sort_"+date+".csv", 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Description","Sort",date])
+                for _ in final_list:
+                    if x is 0:
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2]])
+                    elif x is 6:
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "sensor id"])
+                    elif x > 9:
+                        if h >= len(hexlist):
+                            hexlist.append(" ")
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], hexlist[h]])
+                        h += 1
+                    else:
+                        writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "-"])
+                    x += 1
+            alert = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
+                1] + "_Sort_"+date+".csv has been downloaded into your folder " + self.report_dir)
+            self.report_fail_flag = False
+
+        except:
+            show= QMessageBox.information(self,"failed to Save Temp file","There was an error trying to save the temp file")
+            self.report_fail_flag = True
+
     def csv(self):
         '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
         try:
@@ -1824,7 +1961,8 @@ class MainUtility(QMainWindow):
                 eeprom_tuple = self.get_eeprom_id()
                 self.eeprom = eeprom_tuple
 
-            hexlist = self.sm.get_hex_ids()
+
+            hexlist = self.unchanged_hex_ids
 
             if self.has_protection_board() is True:
                 total_sensors = self.sensor_num[1] + 1
@@ -1840,11 +1978,15 @@ class MainUtility(QMainWindow):
                     return
             if self.eeprom[1] is True:
 
-                if self.path_check is False:
+                if self.report_dir is "":
                     pathway = QMessageBox.warning(self, "Select Path", "Please select a directory to load your csv document",
                                               QMessageBox.Ok)
                     if pathway == QMessageBox.Ok:
                         self.set_report_location()
+                n = 0
+                for detail in self.file_specs:
+                    self.file_specs[n][-1] = detail[-1].replace("\n","")
+                    n += 1
 
                 final_list = self.file_description + self.file_specs
                 x = 0
@@ -1884,6 +2026,7 @@ class MainUtility(QMainWindow):
                 self.colbCount = 0
                 self.rowCount = 0
                 self.pcba_frame_Dict.clear()
+                self.unchanged_hex_ids.clear()
                 self.pcba_memory.clear()
                 self.physical_num = 1
                 self.lsb = -1
@@ -1920,6 +2063,7 @@ class MainUtility(QMainWindow):
                 ee.clear()
                 self.eeprom = tuple(ee)
 
+                self.sm.close_port()
                 self.initUI()
                 
             else:
@@ -1982,6 +2126,7 @@ class MainUtility(QMainWindow):
         if confirmation == QMessageBox.Yes:
             self.serial_thread.quit()
             self.serial_thread.wait()
+            self.sm.close_port()
             event.accept()
         else:
             event.ignore()
