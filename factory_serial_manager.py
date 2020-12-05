@@ -38,10 +38,10 @@ class SerialManager(QObject):
         self.check = False
         self.total_number_reached = False
         self.unchanged_ids = list()
-        self.hex_list = []
+        self.hex_list = list()
         self.pwr_ids = list()
         self.pwr_temps = list()
-        self.hex_memory = []
+        self.hex_memory = list()
         self.eeprom = str()
         self.total_pcba_num = 0
         self.end = b"\r\n>"
@@ -104,217 +104,6 @@ class SerialManager(QObject):
         else:
             pass_dict[True] = True
             return pass_dict
-
-    @pyqtSlot()
-    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, startTime, has_protection_board,build_test = True):
-
-        self.powered_temp_dict = dict()
-        self.err_pwr_dict = dict()
-        err_dict = dict()
-        self.wake_up_call()
-        self.flush_buffers()
-        mid_time = time.time()
-        progBar.setValue(mid_time - startTime)
-
-        if has_protection_board is True:
-            total_sensor_amount += 1
-
-        if self.ser.is_open:
-            try:
-                if build_test is True:
-                    self.ser.write("tac-ee-load-ids 1 \r\n".encode())
-                    self.ser.write(" \r\n".encode())
-
-                    self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
-                    self.ser.write(" \r\n".encode())
-
-                    self.flush_buffers()
-
-                # powered test
-                self.ser.write("strong-pu 0\r\n".encode())
-                pwr_pu = self.ser.read_until(self.end).decode()
-
-                mid_time = time.time()
-                progBar.setValue(mid_time - startTime)
-
-                self.ser.write("sonic-pwr 1\r\n".encode())
-                pwr_sonic = self.ser.read_until(self.end).decode()
-                id_dict = pcba_id_dict.copy()
-
-                self.pwr_ids = self.hex_or_temps_parser(0, "1")
-                self.pwr_temps = self.hex_or_temps_parser(1, "1")
-
-                 # sensor checks
-                matching_Sensors = self.verify_pcba(id_dict, total_sensor_amount)
-
-                if isinstance(matching_Sensors, list):
-                    mid_time = time.time()
-                    progBar.setValue(mid_time - startTime)
-                    return ('Wrong id', matching_Sensors, False)  # EXIT 1
-
-                elif isinstance(matching_Sensors, tuple):
-                    mid_time = time.time()
-                    progBar.setValue(mid_time - startTime)
-                    return matching_Sensors  # EXIT 2 tuple
-
-                mid_time = time.time()
-                progBar.setValue(mid_time - startTime)
-
-                if len(self.pwr_ids) != total_sensor_amount or len(self.pwr_temps) != total_sensor_amount:
-                    self.ser.write("sonic-pwr 1\r\n".encode())
-                    self.test_result_tuple = ("Power Test fail:", "Powered Test Failed \n Failed to read All Sensors!\n"
-                                              + str(len(self.pwr_ids)) + " out of " + str(total_sensor_amount) + "\n"
-                                              + "Temperatures: " + str(len(self.pwr_temps)) + " out of " + str(
-                        total_sensor_amount), False)
-                else:
-                    sensor_information_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
-                    if False in sensor_information_dict:
-                        sensor_information_dict.pop(False)
-                        err_dict = sensor_information_dict
-                    else:
-                        sensor_information_dict.pop(True)
-                        self.powered_temp_dict = sensor_information_dict
-
-                    if len(err_dict) == total_sensor_amount:
-                        return ("Test Fail", "Cable Power Failure: All the sensors return 85", False)
-
-                    elif len(err_dict) > 0 and len(err_dict) < total_sensor_amount:
-                        temp_err_dict = dict()
-                        for hex in err_dict:
-                            if err_dict.get(hex) == 85:
-                                temp_err_dict[pcba_id_dict.get(hex)] = 85  # format [phy_num] = temp code
-                            elif err_dict.get(hex) == 99:
-                                temp_err_dict[pcba_id_dict.get(hex)] = 99
-                        if len(temp_err_dict) > 0:
-                            return ("Power Failure", temp_err_dict, False)
-
-                        # self.test_result_tuple = ("Powered Test Fail: Garbage values", err_list, False)
-                    else:
-                        self.test_result_tuple = ("Powered Test Pass", self.powered_temp_dict, True)
-
-                parasidic_test_results = self.parasidic_Test(total_sensor_amount, pcba_id_dict)
-
-                test_result_dict = dict()
-                if self.test_result_tuple[2] is False and isinstance(self.test_result_tuple[1], list) and \
-                        parasidic_test_results[2] is False and isinstance(parasidic_test_results[1], list):
-                    hex = 0
-                    for temp in parasidic_test_results[1]:
-                        test_result_dict[self.test_result_tuple[1][hex]] = temp
-                    return ("Failed Test", test_result_dict, False)
-                self.test_result_tuple += parasidic_test_results
-
-                return self.test_result_tuple  # EXIT 3
-
-            except Exception:
-                write_error = QMessageBox.critical(self.page_dialog, "Write Error",
-                                                   "There was an error with the powered test\n Please Try again")
-            except ValueError:
-                value_err = QMessageBox.critical(self.page_dialog, "Parsing Error",
-                                                 "There was an Error parsing the information\n please try to re-connect or rescan the sensor")
-        else:
-            error = QMessageBox.critical(self.page_dialog, "Port not found",
-                                         "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
-                                         QMessageBox.Ok)
-            self.page_dialog.show()
-            if error == QMessageBox.Ok:
-                self.page_dialog.close()
-            return -1
-    @pyqtSlot()
-    def parasidic_Test(self, total_sensor_amount, pcba_id_dict):
-        # global result_tuple
-        self.flush_buffers()
-        self.para_dict = dict()
-        self.para_err_dict = dict()
-        if self.ser.is_open:
-            try:
-                # Parasidic Test
-                # self.ser.write("sonic-pwr 0\r\n".encode())
-                # self.ser.write("strong-pu 1\r\n".encode())
-
-                self.para_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
-
-                if len(self.pwr_temps) != total_sensor_amount:
-                        self.ser.write("sonic-pwr 1\r\n".encode())
-                        self.ser.write("strong-pu 0 \r\n".encode())
-                        return ("Missing temps", "failed to read temperatures", False)
-
-                # setting it back to normal and checking they all work
-                self.ser.write("sonic-pwr 1\r\n".encode())
-                self.ser.write("strong-pu 0\r\n".encode())
-                self.flush_buffers()
-
-
-                temp_err = list()
-                temps = self.hex_or_temps_parser(1, "1")
-                for t in temps:
-                    if t > 40:
-                        temp_err.append(t)
-
-                if len(temp_err) == total_sensor_amount:
-                    result_tuple = ("Temperature Failure", "Cable Power Failure: All the sensors return 85", False)
-                elif len(temp_err) != 0:
-                    self.para_err_dict + temp_err
-
-                elif len(self.para_err_dict) > 0:
-                    bad_sensor = dict()
-                    no_power = dict()
-                    for id in self.para_err_dict:
-                        if id in pcba_id_dict and self.para_err_dict.get(id) > 100:
-                            bad_sensor[pcba_id_dict.get(id)] = self.para_err_dict.get(id)  # format [physical #] = temp
-                        if id in pcba_id_dict and self.para_err_dict.get(id) == 85:
-                            no_power[pcba_id_dict.get(id)] = self.para_err_dict.get(id)
-                    final_temp_reading = bad_sensor + no_power
-                    result_tuple = ("Bad Sensor", final_temp_reading, False)
-                else:
-                    result_tuple = ("Successful Parasidic Results", self.para_dict, True)
-
-                self.ser.write("sonic-pwr 1\r\n".encode())
-                garbage = self.ser.read_until(self.end)
-                self.ser.write("strong-pu 0 \n\r".encode())
-                gabage = self.ser.read_until(self.end)
-
-                return result_tuple
-
-            except:
-                write_error = QMessageBox.critical(self.page_dialog, "Write Error",
-                                                   "There was an error with the parasidc test")
-
-    @pyqtSlot()
-    def verify_pcba(self,pcba_dict,len_of_dict):# format (int,{hex,physical number},int )
-        '''This function does a temps call and compares the reading pcbas with the list that is passed returns boolean
-        or a list containing the missing id, pcba_dict format is [hex number of board] = [physical placement in cable]'''
-        self.flush_buffers()
-        if self.ser.is_open:
-            try:
-                error_pcba = list()
-
-                parser = self.pwr_ids.copy()
-                pcba_dictionary_copy = pcba_dict.copy()
-                if parser is None or len(parser) != len_of_dict or parser == False:
-                    parser = self.hex_or_temps_parser(0, "1")
-
-                    if len(parser) != len_of_dict :
-                        for id in pcba_dictionary_copy:
-                            if id not in parser:
-                                return ("Missing Sensor","Position: "+str(pcba_dictionary_copy.get(id)+1)+" Missing Sensor ",False)
-                        return ("Fail","Missing Protection Board",False)
-                        # return ("Missing Protection Board","Missing Protection Board!",False)
-                    else:
-                        return ("Failed Test","Failed to read sensors, Please try again",False)
-                #this checks for same hex #, if wrong or bad return the physical number
-                pcba_replica = pcba_dict.copy()
-                for pcba in parser:
-                    if pcba in pcba_replica:
-                        pcba_replica.pop(pcba)
-
-                if len(pcba_replica) != 0:
-                    for key in pcba_replica:
-                        error_pcba.append(pcba_replica.get(key))
-                    return error_pcba
-                else:
-                    return True
-            except:
-                 return ("Cable Verify Failed\n","There was an error with the test\n Please Try again",False)
 
     @pyqtSlot()
     def hex_or_temps_parser(self, key, port,optional = False):
@@ -430,7 +219,6 @@ class SerialManager(QObject):
 
         if self.ser.is_open:
             hex_number = ""
-
             try:
                 while self.new_Bool is False:
                     self.ser.write("temps 2\r\n".encode())
@@ -506,6 +294,220 @@ class SerialManager(QObject):
                                                  "There was an error trying to load the board")
 
     @pyqtSlot()
+    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, startTime, has_protection_board, build_test=True):
+
+        self.powered_temp_dict = dict()
+        self.err_pwr_dict = dict()
+        err_dict = dict()
+        self.wake_up_call()
+        self.flush_buffers()
+        mid_time = time.time()
+        progBar.setValue(mid_time - startTime)
+
+        if has_protection_board is True:
+            total_sensor_amount += 1
+
+        if self.ser.is_open:
+            try:
+                if build_test is True:
+                    self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+                    self.ser.write(" \r\n".encode())
+
+                    self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
+                    self.ser.write(" \r\n".encode())
+
+                self.flush_buffers()
+
+                # powered test
+                self.ser.write("strong-pu 0\r\n".encode())
+                pwr_pu = self.ser.read_until(self.end).decode()
+
+                mid_time = time.time()
+                progBar.setValue(mid_time - startTime)
+
+                self.ser.write("sonic-pwr 1\r\n".encode())
+                pwr_sonic = self.ser.read_until(self.end).decode()
+                id_dict = pcba_id_dict.copy()
+
+                self.pwr_ids = self.hex_or_temps_parser(0, "1")
+                self.pwr_temps = self.hex_or_temps_parser(1, "1")
+
+                # sensor checks
+                matching_Sensors = self.verify_pcba(id_dict, total_sensor_amount)
+
+                if isinstance(matching_Sensors, list):
+                    mid_time = time.time()
+                    progBar.setValue(mid_time - startTime)
+                    return ('Wrong id', matching_Sensors, False)  # EXIT 1
+
+                elif isinstance(matching_Sensors, tuple):
+                    mid_time = time.time()
+                    progBar.setValue(mid_time - startTime)
+                    return matching_Sensors  # EXIT 2 tuple
+
+                mid_time = time.time()
+                progBar.setValue(mid_time - startTime)
+
+                if len(self.pwr_ids) != total_sensor_amount or len(self.pwr_temps) != total_sensor_amount:
+                    self.ser.write("sonic-pwr 1\r\n".encode())
+                    self.test_result_tuple = ("Power Test fail:", "Powered Test Failed \n Failed to read All Sensors!\n"
+                                              + str(len(self.pwr_ids)) + " out of " + str(total_sensor_amount) + "\n"
+                                              + "Temperatures: " + str(len(self.pwr_temps)) + " out of " + str(
+                        total_sensor_amount), False)
+                else:
+                    sensor_information_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
+                    if False in sensor_information_dict:
+                        sensor_information_dict.pop(False)
+                        err_dict = sensor_information_dict
+                    else:
+                        sensor_information_dict.pop(True)
+                        self.powered_temp_dict = sensor_information_dict
+
+                    if len(err_dict) == total_sensor_amount:
+                        return ("Test Fail", "Cable Power Failure: All the sensors return 85", False)
+
+                    elif len(err_dict) > 0 and len(err_dict) < total_sensor_amount:
+                        temp_err_dict = dict()
+                        for hex in err_dict:
+                            if err_dict.get(hex) == 85:
+                                temp_err_dict[pcba_id_dict.get(hex)] = 85  # format [phy_num] = temp code
+                            elif err_dict.get(hex) == 99:
+                                temp_err_dict[pcba_id_dict.get(hex)] = 99
+                        if len(temp_err_dict) > 0:
+                            return ("Power Failure", temp_err_dict, False)
+
+                    else:
+                        self.test_result_tuple = ("Powered Test Pass", self.powered_temp_dict, True)
+                if build_test is False:
+                    return self.test_result_tuple
+                #TODO: below is only for the build test,this may change over time if the honcho wants para test to be done :)
+                parasidic_test_results = self.parasidic_Test(total_sensor_amount, pcba_id_dict)
+
+                test_result_dict = dict()
+                if self.test_result_tuple[2] is False and isinstance(self.test_result_tuple[1], list) and \
+                        parasidic_test_results[2] is False and isinstance(parasidic_test_results[1], list):
+                    hex = 0
+                    for temp in parasidic_test_results[1]:
+                        test_result_dict[self.test_result_tuple[1][hex]] = temp
+                    return ("Failed Test", test_result_dict, False)
+                self.test_result_tuple += parasidic_test_results
+
+                return self.test_result_tuple  # EXIT 3
+
+            except Exception:
+                write_error = QMessageBox.critical(self.page_dialog, "Write Error",
+                                                   "There was an error with the powered test\n Please Try again")
+            except ValueError:
+                value_err = QMessageBox.critical(self.page_dialog, "Parsing Error",
+                                                 "There was an Error parsing the information\n please try to re-connect or rescan the sensor")
+        else:
+            error = QMessageBox.critical(self.page_dialog, "Port not found",
+                                         "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
+                                         QMessageBox.Ok)
+            self.page_dialog.show()
+            if error == QMessageBox.Ok:
+                self.page_dialog.close()
+            return -1
+
+    @pyqtSlot()
+    def parasidic_Test(self, total_sensor_amount, pcba_id_dict):
+        # global result_tuple
+        self.flush_buffers()
+        self.para_dict = dict()
+        self.para_err_dict = dict()
+        if self.ser.is_open:
+            try:
+                # Parasidic Test
+                # self.ser.write("sonic-pwr 0\r\n".encode())
+                # self.ser.write("strong-pu 1\r\n".encode())
+
+                self.para_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
+
+                if len(self.pwr_temps) != total_sensor_amount:
+                    self.ser.write("sonic-pwr 1\r\n".encode())
+                    self.ser.write("strong-pu 0 \r\n".encode())
+                    return ("Missing temps", "failed to read temperatures", False)
+
+                # setting it back to normal and checking they all work
+                self.ser.write("sonic-pwr 1\r\n".encode())
+                self.ser.write("strong-pu 0\r\n".encode())
+                self.flush_buffers()
+
+                temp_err = list()
+                temps = self.hex_or_temps_parser(1, "1")
+                for t in temps:
+                    if t > 40:
+                        temp_err.append(t)
+
+                if len(temp_err) == total_sensor_amount:
+                    result_tuple = ("Temperature Failure", "Cable Power Failure: All the sensors return 85", False)
+                elif len(temp_err) != 0:
+                    self.para_err_dict + temp_err
+
+                elif len(self.para_err_dict) > 0:
+                    bad_sensor = dict()
+                    no_power = dict()
+                    for id in self.para_err_dict:
+                        if id in pcba_id_dict and self.para_err_dict.get(id) > 100:
+                            bad_sensor[pcba_id_dict.get(id)] = self.para_err_dict.get(id)  # format [physical #] = temp
+                        if id in pcba_id_dict and self.para_err_dict.get(id) == 85:
+                            no_power[pcba_id_dict.get(id)] = self.para_err_dict.get(id)
+                    final_temp_reading = bad_sensor + no_power
+                    result_tuple = ("Bad Sensor", final_temp_reading, False)
+                else:
+                    result_tuple = ("Successful Parasidic Results", self.para_dict, True)
+
+                self.ser.write("sonic-pwr 1\r\n".encode())
+                garbage = self.ser.read_until(self.end)
+                self.ser.write("strong-pu 0 \n\r".encode())
+                gabage = self.ser.read_until(self.end)
+
+                return result_tuple
+
+            except:
+                write_error = QMessageBox.critical(self.page_dialog, "Write Error",
+                                                   "There was an error with the parasidc test")
+
+    @pyqtSlot()
+    def verify_pcba(self, pcba_dict, len_of_dict):  # format (int,{hex,physical number},int )
+        '''This function does a temps call and compares the reading pcbas with the list that is passed returns boolean
+        or a list containing the missing id, pcba_dict format is [hex number of board] = [physical placement in cable]'''
+        self.flush_buffers()
+        if self.ser.is_open:
+            try:
+                error_pcba = list()
+
+                parser = self.pwr_ids.copy()
+                pcba_dictionary_copy = pcba_dict.copy()
+                if parser is None or len(parser) != len_of_dict or parser == False:
+                    parser = self.hex_or_temps_parser(0, "1")
+
+                    if len(parser) != len_of_dict:
+                        for id in pcba_dictionary_copy:
+                            if id not in parser:
+                                return ("Missing Sensor",
+                                        "Position: " + str(pcba_dictionary_copy.get(id) + 1) + " Missing Sensor ",
+                                        False)
+                        return ("Fail", "Missing Protection Board", False)
+                        # return ("Missing Protection Board","Missing Protection Board!",False)
+                    else:
+                        return ("Failed Test", "Failed to read sensors, Please try again", False)
+                # this checks for same hex #, if wrong or bad return the physical number
+                pcba_replica = pcba_dict.copy()
+                for pcba in parser:
+                    if pcba in pcba_replica:
+                        pcba_replica.pop(pcba)
+
+                if len(pcba_replica) != 0:
+                    for key in pcba_replica:
+                        error_pcba.append(pcba_replica.get(key))
+                    return error_pcba
+                else:
+                    return True
+            except:
+                return ("Cable Verify Failed\n", "There was an error with the test\n Please Try again", False)
+
+    @pyqtSlot()
     def eeprom_program(self,top_list,sensor_positions_list,hex_list_to_be_sent):
         if self.ser.is_open:
             try:
@@ -520,6 +522,8 @@ class SerialManager(QObject):
 
                 bottom_of_list = self.get_meta_data_info()
                 config_list = top_list+bottom_of_list
+
+                self.metadata_information = config_list.copy()
 
                 for line in reversed(config_list):
                     self.ser.write(("tac-ee-meta 1 w "+line+"\r\n").encode())
@@ -547,6 +551,8 @@ class SerialManager(QObject):
                     self.ser.write((positions + " \r\n").encode())
 
                 self.program_eeprom_flag = True
+
+                self.flush_buffers() #TODO: I dont know why the d505 board is still reading after the test was done, this buffer is an attempt to get it to shut down
 
             except:
                 self.ser.write(" \r\n".encode())
@@ -584,11 +590,36 @@ class SerialManager(QObject):
                     self.eeprom = s[6:]
             return True
 
+    def verify_eeprom(self,font):
+        if self.ser.is_open:
+            try:
+                self.page_dialog.setFont(font)
+                print(self.page_dialog.fontInfo())
+                self.flush_buffers()
+                self.ser.write("config \r\n".encode())
+                result = self.ser.read_until(self.end).decode()
+                result_list = result.split('\r\n')
+
+                if len(result_list)< 14:
+                    infrom = QMessageBox.critical(self.page_dialog,"Metadata Failed","***Bad output***\n"+result,QMessageBox.Close)
+                    return False
+
+                inform = QMessageBox.information(self.page_dialog, "Final Test Results","***Does this information look Correct?***\n\n"+result,QMessageBox.Yes|QMessageBox.No)
+
+                if inform == QMessageBox.Yes:
+                    return True
+                if inform == QMessageBox.No:
+                    return False
+
+            except info:
+                message = QMessageBox.warning(self.page_dialog,"Error Detected",info)
+                return
+
     def get_meta_data_info(self):
         meta_data_list= list()
         current_date = self.get_date()
         meta_data_list.append("date created @ "+current_date)
-        meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")
+        meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")#this will always be the same unless you have been directed to change same goes with hardware
         meta_data_list.append("hardware @ 1.0d")
         return meta_data_list
 
@@ -640,6 +671,23 @@ class SerialManager(QObject):
         time.sleep(0.5)
         self.ser.read(self.ser.in_waiting)
 
+    def reset_variables(self):
+        self.memory = ''
+        self.counter = 0
+        self.new_Bool = False
+        self.program_eeprom_flag = False
+        # self.page_dialog = QDialog()
+        self.check = False
+        self.total_number_reached = False
+        self.unchanged_ids.clear()
+        self.hex_list.clear()
+        self.pwr_ids.clear()
+        self.pwr_temps.clear()
+        self.hex_memory.clear()
+        self.eeprom = str()
+        self.total_pcba_num = 0
+
     def close_port(self):
         """Closes serial port."""
+        self.flush_buffers()
         self.ser.close()

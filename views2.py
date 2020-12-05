@@ -614,26 +614,27 @@ class MainUtility(QMainWindow):
     def get_err_display_box(self):
         display_box_contents = list()
 
-        internal_box = self.create_square_frame(-1, 0, 0, 600, 600)  # make box highlight red
-        internal_box.setAutoFillBackground(True)
-        internal_grid =QGridLayout()
-        internal_box.setLayout(internal_grid)
+        internal_box_frame = self.create_square_frame(-1, 0, 0, 600, 600)  # make box highlight red
+        internal_box_frame.setAutoFillBackground(True)
+        internal_frame_grid =QGridLayout()
+        internal_box_frame.setLayout(internal_frame_grid)
 
-        grid = QGridLayout()
-        grid.setSpacing(20)
+        scroll_grid = QGridLayout()
+        scroll_grid.setSpacing(20)
+
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setLayout(grid)
+        scroll_area.setLayout(scroll_grid)
 
-        internal_grid.addWidget(scroll_area,0,0)
+        internal_frame_grid.addWidget(scroll_area,0,0)
 
-        display_box_contents.append(internal_box)
-        display_box_contents.append(grid)
+        display_box_contents.append(internal_box_frame)
+        display_box_contents.append(scroll_grid)
         display_box_contents.append(scroll_area)
-        display_box_contents.append(internal_grid)
+        display_box_contents.append(internal_frame_grid)
 
         return display_box_contents
 
@@ -817,10 +818,10 @@ class MainUtility(QMainWindow):
                     marker_lbl.setText(self.sensor_length[orderNum])
                     marker_lbl.setGeometry(QtCore.QRect(65,0,41,21))
                     marker_lbl.setFont(self.font(10,10,True))
-                    length_lbl.setGeometry(QtCore.QRect(9,0,41,21))
+                    length_lbl.setGeometry(QtCore.QRect(9,0,50,21))
                     length_lbl.setFont(self.font(10,10,True))
                 else:
-                    length_lbl.setGeometry(QtCore.QRect(35,0,41,21))
+                    length_lbl.setGeometry(QtCore.QRect(35,0,50,21))
                     length_lbl.setFont(self.font(10,10,True))
                 physical_num_lbl = QtWidgets.QLabel(cable_frame)
                 physical_num_lbl.setText(str(orderNum))
@@ -830,7 +831,7 @@ class MainUtility(QMainWindow):
             else:
                 if self.sensor_length[orderNum-1] != 'N/A' or self.sensor_length[orderNum-1] != '-':
                     length_lbl.setText(self.sensor_length[orderNum])
-                length_lbl.setGeometry(QtCore.QRect(40, 0, 41, 21))  # this deals with the label geometry placement
+                length_lbl.setGeometry(QtCore.QRect(40, 0, 50, 21))  # this deals with the label geometry placement
                 length_lbl.setFont(self.font(10, 45, True))
                 physical_num_lbl = QtWidgets.QLabel(cable_frame)
                 physical_num_lbl.setText(str(orderNum))
@@ -846,7 +847,7 @@ class MainUtility(QMainWindow):
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
-                                                      "Excel (*.csv *.xlsx *.tsv)")  # other options ->;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
+                                                      "Excel (*.csv *.xlsx *.tsv)")#other options ->;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
             if (select_file[0] is ''):
                 return
             else:
@@ -1472,7 +1473,7 @@ class MainUtility(QMainWindow):
             count = 1
             list.remove(hold)
 
-    def parasidic_and_power_test(self,build_test = True):
+    def parasidic_and_power_test(self,build_test = True,final_test = False):
         self.power_end = tuple()
         time_start = time.time()
         protection_board = self.has_protection_board()
@@ -1509,7 +1510,13 @@ class MainUtility(QMainWindow):
             elif len(self.power_end[1]) >= 1:  # EXIT 1
                 self.progress_bar.setValue(self.getTime(time_start))
                 self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-        #para test result
+
+        elif build_test is False and self.power_end[2] is True:#Both program and final test enter here if they pass power test
+            self.pass_flag = True
+            self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+            if final_test is False:
+                self.eeprom_btn.setEnabled(True)
+        #para test result for build test
         elif isinstance(self.power_end[4], str) and self.power_end[5] == False:
             self.progress_bar.setValue(self.getTime(time_start))
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
@@ -1518,14 +1525,14 @@ class MainUtility(QMainWindow):
             self.pass_flag = True
             self.progress_bar.setValue(self.getTime(time_start))
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-            if build_test is False:
+            if build_test is False and final_test is False:
                 self.eeprom_btn.setEnabled(True)
 
         else:
             self.progress_bar.setValue(self.getTime(time_start))
             self.final_powr_tuple = self.power_end
 
-        if self.pass_flag is True:
+        if self.pass_flag is True and final_test is False:
             self.program_tab.setEnabled(True)
 
         #temperature display
@@ -1549,7 +1556,7 @@ class MainUtility(QMainWindow):
                                             100,150, 50)
                     self.error_messages.append(lbl)
                 if build_test is True:
-                    change = QMessageBox.information(self,"Options","Would you like to update or ignore the new board?",QMessageBox.Apply|QMessageBox.Ignore)
+                    change = QMessageBox.critical(self,"Wrong Sensor Found","Would you like to update or ignore the new board?",QMessageBox.Apply|QMessageBox.Ignore)
                     if change == QMessageBox.Ignore:
                         pass
                     elif change == QMessageBox.Apply:
@@ -1593,6 +1600,11 @@ class MainUtility(QMainWindow):
                     self.error_messages.append(lbl)
 
         #PASSED TEST
+        elif build_test is False and result[2] is True:
+            err_box[0].setPalette(self.palette(50, 205, 50))
+            lbl = self.create_label(0, "", "Test Succesful!", 10, 10, True, 0, 0, 150, 50)
+            self.error_messages.append(lbl)
+
         elif result[2] is True and result[5] is True:
             err_box[0].setPalette(self.palette(50, 205, 50))
             lbl = self.create_label(0,"","Test Succesful!",10,10,True,0,0,150, 50)
@@ -1606,7 +1618,7 @@ class MainUtility(QMainWindow):
                 self.build_error_box[0].setVisible(True)
             else:
                 self.prog_err_box_contents[0].setVisible(True)
-            # box[0].setVisible(True)
+
             self.current_display_error_box = box.copy()
 
             if len(self.error_messages) == 1:
@@ -1616,10 +1628,9 @@ class MainUtility(QMainWindow):
                 box[0].setPalette(self.palette(255,139,119))
                 x = 0
                 for lbl in self.error_messages:
-                    box[1].addWidget(lbl,x,0,11,11)
-                    x += 2
+                    box[1].addWidget(lbl, x, 0, 11, 11)
+                    x += 4
 
-            # self.build_gridLayout.addWidget(box[0], 12, 1, 2, 11)
             if build_test is True:
                 self.build_error_box[1].addWidget(box[0],11,1,2,11)
             else:
@@ -1636,6 +1647,7 @@ class MainUtility(QMainWindow):
 
             # self.program_gridLayout.addWidget(box[0],12,1,2,11)
             self.prog_err_box_contents[1].addWidget(box[0],11,1,2,11)
+            print("length of Qgridlaout: ",len(self.prog_err_box_contents[1]))
         elif key == 2:
             self.prog_err_box_contents[0].setVisible(True)
             box[0].setVisible(True)
@@ -1646,6 +1658,7 @@ class MainUtility(QMainWindow):
             box[1].addWidget(fail_message,0,0,11,11)
 
             self.prog_err_box_contents[1].addWidget(box[0],11,1,2,11)
+
             # self.program_gridLayout.addWidget(box[0],12,1,2,11)
 
     def update_temperatures(self,temps_list,hex_list,build_test,total_sensors):
@@ -1691,7 +1704,7 @@ class MainUtility(QMainWindow):
                             self.program_live_temperature_list[index].setText("--C"+ chr(176))
                         index += 1
         except:
-            inform = QMessageBox.information(self,"No sensors Detected","There was an error, No sensors detected")
+            inform = QMessageBox.warning(self,"No sensors Detected","There was an error, No sensors detected")
             return
 
     def update_list_of_sensor_ids(self,new_list = None,new_id = None,remove_id = False,replace_id = False,index = None,insert_id = False):
@@ -1796,21 +1809,6 @@ class MainUtility(QMainWindow):
                 self.ra_mold[mold[0][-1]] = False
             counter += 1
 
-    def get_protection_board_id(self,key):
-        if key is 0:
-            ids = self.sm.get_hex_ids()
-            for id in self.final_physical_order:
-                if id in ids:
-                    ids.remove(id)
-            return ids[0]
-        else:
-            id_list = self.sm.get_unchanged_ids()
-            for id in self.unchanged_hex_ids:
-                if id in id_list:
-                    id_list.remove(id)
-                # elif id in self.unchanged_hex_ids:
-            return id_list[0]
-
     def has_protection_board(self):
         protection_board = self.file_specs[3][0]
         pb = protection_board[:10]
@@ -1835,11 +1833,10 @@ class MainUtility(QMainWindow):
         self.parasidic_and_power_test(build_test = True)
 
     def verify_Cable_Test(self):
+        self.prog_err_box_contents[0].setVisible(False)
         self.parasidic_and_power_test(build_test = False)
-        # self.eeprom_btn.setEnabled(True)
 
     def eeprom_call(self):
-        # self.eeprom_btn.setEnabled(False)
 
         self.prog_err_box_contents[0].setVisible(False)
         eeprom_box = self.get_err_display_box()
@@ -1894,6 +1891,20 @@ class MainUtility(QMainWindow):
         else:
             return (eeprom,True)
 
+    def get_protection_board_id(self, key):
+        if key is 0:
+            ids = self.sm.get_hex_ids()
+            for id in self.final_physical_order:
+                if id in ids:
+                    ids.remove(id)
+            return ids[0]
+        else:
+            id_list = self.sm.get_unchanged_ids()
+            for id in self.unchanged_hex_ids:
+                if id in id_list:
+                    id_list.remove(id)
+                # elif id in self.unchanged_hex_ids:
+            return id_list[0]
     def awake(self):
         '''This a loop that sends a command to the D505 to keep it awake '''
         while True:
@@ -1941,8 +1952,6 @@ class MainUtility(QMainWindow):
                     else:
                         writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "-"])
                     x += 1
-            alert = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
-                1] + "_Sort_"+date+".csv has been downloaded into your folder " + self.report_dir)
             self.report_fail_flag = False
 
         except:
@@ -1952,15 +1961,25 @@ class MainUtility(QMainWindow):
     def csv(self):
         '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
         try:
+
             self.prog_err_box_contents[0].setVisible(False)
             fail_box = self.get_err_display_box()
             fail_box[0].setVisible(False)
             self.prog_err_box_contents[1].addWidget(fail_box[0])
 
-            if self.eeprom is "":
+            font = self.font(20,20,True)
+
+            self.parasidic_and_power_test(build_test=False,final_test=True)
+            result = self.sm.verify_eeprom(font)
+
+            if result is False:
+                self.fail_message = "EEProm Failed"
+                self.print_to_err_box(fail_box,2,build_test=False)
+                return
+
+            if self.eeprom is "" or len(self.eeprom) is 0:
                 eeprom_tuple = self.get_eeprom_id()
                 self.eeprom = eeprom_tuple
-
 
             hexlist = self.unchanged_hex_ids
 
@@ -1970,11 +1989,11 @@ class MainUtility(QMainWindow):
             if len(hexlist) != total_sensors or self.eeprom[1] is False or hexlist is False:
                 if self.eeprom[1] is False:
                     self.fail_message = "failed to Read eeprom \n Please try again"
-                    self.print_to_err_box(fail_box,2)
+                    self.print_to_err_box(fail_box,2,build_test=False)
                     return
                 else:
                     self.fail_message = " Failed to read all Sensors\n Please try again"
-                    self.print_to_err_box(fail_box,2)
+                    self.print_to_err_box(fail_box,2,build_test=False)
                     return
             if self.eeprom[1] is True:
 
@@ -2014,6 +2033,7 @@ class MainUtility(QMainWindow):
                 self.file_btn.setEnabled(True)
                 self.hex_number_lbl.clear()
                 self.pcba_hexList.clear()
+                self.hex_list.clear()
                 self.pcba_frame_Highlight.clear()
                 self.hex_lbl_Dict.clear()
                 self.pcba_hexDict.clear()
@@ -2053,25 +2073,28 @@ class MainUtility(QMainWindow):
                 self.scan_finished = False
                 self.success_print.clear()
                 self.build_live_temperature_list.clear()
+                self.final_physical_order.clear()
                 self.program_live_temperature_list.clear()
                 self.before.clear()
                 self.error_messages.clear()
                 self.wrong_sensors_found_list.clear()
                 self.settings.setValue("report_file_path", "/path/to/report/folder")
-                # self.wake.terminate()
                 ee = list(self.eeprom)
                 ee.clear()
                 self.eeprom = tuple(ee)
+                self.sm.reset_variables()
 
                 self.sm.close_port()
                 self.initUI()
+
                 
             else:
                 inform = QMessageBox.information(self,"Fail","Please program eeprom before doing final test")
 
         except Exception as ex:
             print("error: ",ex)
-            # self.print_to_err_box() TODO: put a print to err box message here and in the else above aswell
+            self.fail_message = "Failed to create csv, make sure everything is connected or that previous csv is closed"
+            self.print_to_err_box(fail_box,2)
             return
 
     def populate_ports(self):
