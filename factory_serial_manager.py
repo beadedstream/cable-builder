@@ -40,6 +40,7 @@ class SerialManager(QObject):
         self.unchanged_ids = list()
         self.hex_list = list()
         self.pwr_ids = list()
+        self.hex_id_dict= dict()
         self.pwr_temps = list()
         self.hex_memory = list()
         self.eeprom = str()
@@ -126,27 +127,48 @@ class SerialManager(QObject):
                 elif key == 1 and isinstance(temps, list) and temps[2][2] != '0':
                     for t in range(3, len(temps)):
                         temp_list.append(temps[t][34:41])
+
                     temp_list.pop()
                     temp_list.pop()
 
                     t_list = temp_list.copy()
                     temp_list.clear()
+
                     for t in t_list:
                         temp_list.append(float(t))
                     return temp_list
 
                 elif key == 2 and isinstance(temps,list)and temps[2][2] != '0' :
-
-                    for hex in range(3, len(temps)):
-                        hex_list.append(temps[hex][4:24] + "28")
-                    hex_list.pop()
-                    hex_list.pop()
-
-                    temp_list = list()
+                    counter = 0
+                    protection_board_temperature = list()
+                    protection_board_hex = list()
                     for t in range(3, len(temps)):
-                        temp_list.append(temps[t][34:41])
-                    temp_list.pop()
-                    temp_list.pop()
+                        hex_list.append(temps[t][4:24].replace(" ", "") + "28")
+                        if hex_list[counter] in self.hex_id_dict:
+                            temp_list.append(temps[t][34:41])
+                        else:
+                            protection_board_temperature.append(temps[t][34:41])
+                            protection_board_hex.append(temps[t][4:24].replace(" ","")+"28")
+
+
+                        counter += 1
+                    hex_list.remove(protection_board_hex[0])
+                    protection_board_temperature.pop()
+                    protection_board_temperature.pop()
+                    protection_board_hex.pop()
+                    protection_board_hex.pop()
+
+                    hex_list.pop()
+                    hex_list.pop()
+                    if len(protection_board_hex) > 0 or len(protection_board_temperature)>0:
+                        temp_list.insert(0, protection_board_temperature[0])
+                        hex_list.insert(0,protection_board_hex[0])
+
+                    t_list = temp_list.copy()
+                    temp_list.clear()
+
+                    for t in t_list:
+                        temp_list.append(float(t))
 
                     pcba = (hex_list,temp_list)
                     return pcba
@@ -218,7 +240,7 @@ class SerialManager(QObject):
     def pcba_sensor(self):
 
         if self.ser.is_open:
-            hex_number = ""
+
             try:
                 while self.new_Bool is False:
                     self.ser.write("temps 2\r\n".encode())
@@ -294,15 +316,15 @@ class SerialManager(QObject):
                                                  "There was an error trying to load the board")
 
     @pyqtSlot()
-    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, startTime, has_protection_board, build_test=True):
+    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, progress_bar_counter, has_protection_board, build_test=True):
 
         self.powered_temp_dict = dict()
         self.err_pwr_dict = dict()
         err_dict = dict()
         self.wake_up_call()
         self.flush_buffers()
-        mid_time = time.time()
-        progBar.setValue(mid_time - startTime)
+
+        progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
         if has_protection_board is True:
             total_sensor_amount += 1
@@ -315,6 +337,9 @@ class SerialManager(QObject):
 
                     self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
                     self.ser.write(" \r\n".encode())
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                else:
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
                 self.flush_buffers()
 
@@ -322,31 +347,33 @@ class SerialManager(QObject):
                 self.ser.write("strong-pu 0\r\n".encode())
                 pwr_pu = self.ser.read_until(self.end).decode()
 
-                mid_time = time.time()
-                progBar.setValue(mid_time - startTime)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
                 self.ser.write("sonic-pwr 1\r\n".encode())
                 pwr_sonic = self.ser.read_until(self.end).decode()
                 id_dict = pcba_id_dict.copy()
+                self.hex_id_dict = pcba_id_dict.copy()
 
-                self.pwr_ids = self.hex_or_temps_parser(0, "1")
-                self.pwr_temps = self.hex_or_temps_parser(1, "1")
+                self.pwr_ids,self.pwr_temps = self.hex_or_temps_parser(2, "1")
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
                 # sensor checks
                 matching_Sensors = self.verify_pcba(id_dict, total_sensor_amount)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+
 
                 if isinstance(matching_Sensors, list):
-                    mid_time = time.time()
-                    progBar.setValue(mid_time - startTime)
-                    return ('Wrong id', matching_Sensors, False)  # EXIT 1
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
-                elif isinstance(matching_Sensors, tuple):
-                    mid_time = time.time()
-                    progBar.setValue(mid_time - startTime)
-                    return matching_Sensors  # EXIT 2 tuple
+                    return ('Wrong id', matching_Sensors, False,progress_bar_counter)  # EXIT 1
 
-                mid_time = time.time()
-                progBar.setValue(mid_time - startTime)
+                if isinstance(matching_Sensors, tuple):
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+
+                    return matching_Sensors  # EXIT 2 tuple add counter
+
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+
 
                 if len(self.pwr_ids) != total_sensor_amount or len(self.pwr_temps) != total_sensor_amount:
                     self.ser.write("sonic-pwr 1\r\n".encode())
@@ -355,6 +382,8 @@ class SerialManager(QObject):
                                               + "Temperatures: " + str(len(self.pwr_temps)) + " out of " + str(
                         total_sensor_amount), False)
                 else:
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+
                     sensor_information_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
                     if False in sensor_information_dict:
                         sensor_information_dict.pop(False)
@@ -362,9 +391,10 @@ class SerialManager(QObject):
                     else:
                         sensor_information_dict.pop(True)
                         self.powered_temp_dict = sensor_information_dict
+                    progress_bar_counter  = self.update_prog_bar(progress_bar_counter,progBar)
 
                     if len(err_dict) == total_sensor_amount:
-                        return ("Test Fail", "Cable Power Failure: All the sensors return 85", False)
+                        return ("Test Fail", "Cable Power Failure: All the sensors return 85", False,progress_bar_counter)
 
                     elif len(err_dict) > 0 and len(err_dict) < total_sensor_amount:
                         temp_err_dict = dict()
@@ -374,14 +404,19 @@ class SerialManager(QObject):
                             elif err_dict.get(hex) == 99:
                                 temp_err_dict[pcba_id_dict.get(hex)] = 99
                         if len(temp_err_dict) > 0:
-                            return ("Power Failure", temp_err_dict, False)
+                            return ("Power Failure", temp_err_dict, False,progress_bar_counter)
 
                     else:
                         self.test_result_tuple = ("Powered Test Pass", self.powered_temp_dict, True)
+
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
                 if build_test is False:
-                    return self.test_result_tuple
+                    result = self.test_result_tuple +(progress_bar_counter,)
+                    return result
+
                 #TODO: below is only for the build test,this may change over time if the honcho wants para test to be done :)
                 parasidic_test_results = self.parasidic_Test(total_sensor_amount, pcba_id_dict)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
 
                 test_result_dict = dict()
                 if self.test_result_tuple[2] is False and isinstance(self.test_result_tuple[1], list) and \
@@ -389,10 +424,11 @@ class SerialManager(QObject):
                     hex = 0
                     for temp in parasidic_test_results[1]:
                         test_result_dict[self.test_result_tuple[1][hex]] = temp
-                    return ("Failed Test", test_result_dict, False)
+                    return ("Failed Test", test_result_dict, False,progress_bar_counter)
                 self.test_result_tuple += parasidic_test_results
 
-                return self.test_result_tuple  # EXIT 3
+                result = self.test_result_tuple + (progress_bar_counter,)
+                return result # EXIT 3
 
             except Exception:
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
@@ -408,6 +444,12 @@ class SerialManager(QObject):
             if error == QMessageBox.Ok:
                 self.page_dialog.close()
             return -1
+
+    #TODO: CREATE A FUNCTION FOR THE PROGRES BAR INCREMETATION THAT PASSES BY REFRERENCE REATHER BY VALUE, IT WOULD BE BEST IF I DOES NOT RETURN ANYTHING AN THE PROG BAR AND COUNTER ARE GLOBAL.
+    def update_prog_bar(self,counter,prog_bar):
+        counter +=10
+        prog_bar.setValue(counter)
+        return counter
 
     @pyqtSlot()
     def parasidic_Test(self, total_sensor_amount, pcba_id_dict):

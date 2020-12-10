@@ -125,6 +125,7 @@ class MainUtility(QMainWindow):
         self.scan_finished = False
         self.build_live_temperature_list = list()
         self.program_live_temperature_list = list()
+        self.successfully_programmed_eeprom_flag = False
         self.serial_hex_list = list()
         self.final_order = dict()
         self.final_physical_order = dict()
@@ -186,12 +187,14 @@ class MainUtility(QMainWindow):
         self.test_btn.setText("Test")
         self.test_btn.setFont(self.font(20, 75, True))
         self.test_btn.clicked.connect(self.testScreen)
+        self.test_btn.setEnabled(False)
 
         self.calibrate_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.calibrate_btn.setGeometry(QtCore.QRect(655, 400, 180, 160))
         self.calibrate_btn.setText("Calibrate")
         self.calibrate_btn.setFont(self.font(20, 75, True))
         self.calibrate_btn.clicked.connect(self.calibrateScreen)
+        self.calibrate_btn.setEnabled(False)
 
         self.manufacture_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.manufacture_btn.setGeometry(QtCore.QRect(400, 400, 180, 160))
@@ -379,10 +382,8 @@ class MainUtility(QMainWindow):
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
         progressBar_frame = self.create_square_frame(0)
-        self.progress_bar = QProgressBar(progressBar_frame)
-        self.progress_bar.setGeometry(0, 40, 100, 20)
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(110000)
+        self.progress_bar = self.create_progress_bar(progressBar_frame,160)
+        self.progress_bar_counter = 0
 
         self.build_gridLayout.addWidget(self.powered_test_btn_frame, 0, 0, 2, 2)
         self.build_gridLayout.addWidget(progressBar_frame, 1, 0, 2, 2)
@@ -412,6 +413,8 @@ class MainUtility(QMainWindow):
         self.prog_err_box_contents = self.get_err_display_box()
         self.prog_err_box_contents[0].setVisible(False)
 
+        verify_prog_bar_frame = self.create_square_frame(0)
+        self.verify_button_prog_bar = self.create_progress_bar(verify_prog_bar_frame,100)
         self.cable_verify_btn_frame = self.create_square_frame(0)
         self.cable_verify_btn = QPushButton(self.cable_verify_btn_frame)
         self.cable_verify_btn.setText("Cable Verify")
@@ -419,7 +422,8 @@ class MainUtility(QMainWindow):
         self.cable_verify_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
 
-
+        eeprom_prog_bar_frame = self.create_square_frame(0)
+        self.eeprom_prog_bar = self.create_progress_bar(eeprom_prog_bar_frame,100)
         self.eeprom_btn_frame = self.create_square_frame(0)
         self.eeprom_btn = QPushButton(self.eeprom_btn_frame)
         self.eeprom_btn.setEnabled(False)
@@ -428,6 +432,8 @@ class MainUtility(QMainWindow):
         self.eeprom_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.eeprom_btn.clicked.connect(self.eeprom_call)
 
+        final_test_prog_bar_frame = self.create_square_frame(0)
+        self.final_test_prog_bar = self.create_progress_bar(final_test_prog_bar_frame,200)
         self.final_test_btn_frame = self.create_square_frame(0)
         self.final_test_btn = QPushButton(self.final_test_btn_frame)
         self.final_test_btn.setText("Final Test")
@@ -440,11 +446,14 @@ class MainUtility(QMainWindow):
         self.prog_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
         self.program_gridLayout.addWidget(self.cable_verify_btn_frame, 0, 0, 2, 2)
-        self.program_gridLayout.addWidget(self.eeprom_btn_frame, 2, 0,2,2)
-        self.program_gridLayout.addWidget(self.final_test_btn_frame, 4, 0,2,2)
+        self.program_gridLayout.addWidget(verify_prog_bar_frame,1, 0, 2, 2)
+        self.program_gridLayout.addWidget(self.eeprom_btn_frame, 2, 0, 2, 2)
+        self.program_gridLayout.addWidget(eeprom_prog_bar_frame,3, 0, 2, 2)
+        self.program_gridLayout.addWidget(self.final_test_btn_frame, 4, 0, 2, 2)
+        self.program_gridLayout.addWidget(final_test_prog_bar_frame,5, 0, 2, 2)
         self.program_gridLayout.addWidget(self.prog_dtc_serial_lbl, 0, 10)
         self.program_gridLayout.addWidget(self.program_scrollArea, 1, 1, 11, 11)
-        self.program_gridLayout.addWidget(self.prog_err_box_contents[0],12,1,2,11)
+        self.program_gridLayout.addWidget(self.prog_err_box_contents[0], 12, 1, 2, 11)
 
         self.sm.wake_up_call()
         # inputting of widgets
@@ -497,6 +506,13 @@ class MainUtility(QMainWindow):
             lbl.setPixmap(QtGui.QPixmap(pixmap))
             lbl.setScaleContents(scale_content)
             return lbl
+
+    def create_progress_bar(self,frame,maximum):
+        prog_bar = QtWidgets.QProgressBar(frame)
+        prog_bar.setGeometry(0,40,100,20)
+        prog_bar.setMinimum(0)
+        prog_bar.setMaximum(maximum)
+        return prog_bar
 
     def right_check(self):
         self.pcba_current_number += 1
@@ -851,6 +867,10 @@ class MainUtility(QMainWindow):
             if (select_file[0] is ''):
                 return
             else:
+                get_directory_tuple = select_file[0].rindex('/')
+                self.report_dir = select_file[0][:get_directory_tuple]
+                # self.final_path_lbl.setText(self.report_dir)
+
                 file = open(select_file[0], "r")
 
             self.file_contents = []
@@ -1473,9 +1493,9 @@ class MainUtility(QMainWindow):
             count = 1
             list.remove(hold)
 
-    def parasidic_and_power_test(self,build_test = True,final_test = False):
+    def parasidic_and_power_test(self,build_test = True,final_test = False,progress_bar = None):
+        self.update_progress_bar(reset = True,progress_bar=progress_bar)
         self.power_end = tuple()
-        time_start = time.time()
         protection_board = self.has_protection_board()
         self.error_messages.clear()
         err_box = self.get_err_display_box()
@@ -1483,71 +1503,83 @@ class MainUtility(QMainWindow):
         if build_test is True:
             self.build_error_box[0].setVisible(False)
             self.build_error_box[1].addWidget(err_box[0])
-            self.progress_bar.setValue(self.getTime(time_start))
+            self.update_progress_bar(10,progress_bar)
 
         else:
             self.prog_err_box_contents[0].setVisible(False)
             self.prog_err_box_contents[1].addWidget(err_box[0])
             self.verify_error_tuple = tuple()
 
-        self.power_end = self.sm.Test_Cable(self.sensor_num[1], self.final_physical_order, self.progress_bar,
-                                                time_start, protection_board,build_test = build_test)
+        self.power_end = self.sm.Test_Cable(self.sensor_num[1], self.final_physical_order, progress_bar,
+                                                self.progress_bar_counter, protection_board,build_test = build_test)#you might need to create a signal that sends the value of the progress bar counter back
+
         if self.power_end == -1:
             return
-        self.progress_bar.setValue(self.getTime(time_start))
 
         #power test result
         if self.power_end is None:
-            self.progress_bar.setValue(self.getTime(time_start))
+            self.update_progress_bar(140,progress_bar)
             self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False),err_box,build_test)
             return
-
-        elif self.power_end[2] is False:
+        self.progress_bar_counter = self.power_end[-1]
+        if self.power_end[2] is False:
             if isinstance(self.power_end[1], str):  # Exit 2
-                self.progress_bar.setValue(self.getTime(time_start))
+                self.update_progress_bar(45,progress_bar)
                 self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
             elif len(self.power_end[1]) >= 1:  # EXIT 1
-                self.progress_bar.setValue(self.getTime(time_start))
+                self.update_progress_bar(45,progress_bar)
                 self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
         elif build_test is False and self.power_end[2] is True:#Both program and final test enter here if they pass power test
+            self.update_progress_bar(45,progress_bar)
             self.pass_flag = True
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-            if final_test is False:
+            if final_test is False and self.successfully_programmed_eeprom_flag is False:
                 self.eeprom_btn.setEnabled(True)
         #para test result for build test
-        elif isinstance(self.power_end[4], str) and self.power_end[5] == False:
-            self.progress_bar.setValue(self.getTime(time_start))
+        elif isinstance(self.power_end[4], str) and self.power_end[-2] == False:
+            self.update_progress_bar(150,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
         elif self.power_end[2] is True and self.power_end[5] is True:
             self.pass_flag = True
-            self.progress_bar.setValue(self.getTime(time_start))
+            self.update_progress_bar(10,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-            if build_test is False and final_test is False:
+            if build_test is False and final_test is False and self.successfully_programmed_eeprom_flag is False:
                 self.eeprom_btn.setEnabled(True)
 
         else:
-            self.progress_bar.setValue(self.getTime(time_start))
+            self.update_progress_bar(10,progress_bar)
             self.final_powr_tuple = self.power_end
 
+        self.update_progress_bar(10,progress_bar)
         if self.pass_flag is True and final_test is False:
             self.program_tab.setEnabled(True)
 
         #temperature display
-        if self.power_end[2] is True and self.power_end[-1] is True:
+        if self.power_end[2] is True and self.power_end[-2] is True:
+            self.update_progress_bar(10,progress_bar)
             temps = self.sm.get_temps()
             hex = self.sm.get_hex_ids()
             self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
         else:
-            temps = self.sm.get_temps()
+            self.update_progress_bar(10,progress_bar)
+            temps = self.sm.get_temps()#check if
             hex = self.sm.get_hex_ids()
             self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
+            self.update_progress_bar(10,progress_bar)
+        if build_test:
+            progress_bar.setValue(160)#default will allways make it end at 100%
+        elif final_test is True:
+            print("final_test counter value: ",self.progress_bar_counter)
+            progress_bar.setValue(100)
+        else:
+            progress_bar.setValue(100)
 
     def print_pwr_para_test_result(self,result,err_box,build_test = True):
         #pwr Failed test
-        if result[2] is False and len(result) == 3:
+        if result[2] is False and len(result) >= 3:
             err_box[0].setPalette(self.palette(255,139,119))
 
             if isinstance(result[1],list):
@@ -1581,9 +1613,9 @@ class MainUtility(QMainWindow):
             elif isinstance(result[1],dict):
                 for phy_num in result[1]:
                     if result[1].get(phy_num) == 85:
-                        lbl = self.create_label(0,"","Position " +str(phy_num)+" Power Failure: Sensor returns 85", 10, 10, True, 0, 0, 150, 50)
+                        lbl = self.create_label(0,"","Position " +str(phy_num+1) +" Power Failure: Sensor returns 85", 10, 10, True, 0, 0, 150, 50)
                     elif result[1].get(phy_num) > 90:
-                        lbl = self.create_label(0,"","Position "+str(phy_num)+ " Failed: Sensor returns temperature higher than 90 or nothing", 10, 10, True, 0, 0, 150, 50)
+                        lbl = self.create_label(0,"","Position "+str(phy_num+1) + " Failed: Sensor returns temperature higher than 90 or nothing", 10, 10, True, 0, 0, 150, 50)
                     self.error_messages.append(lbl)
 
         #para test
@@ -1822,23 +1854,26 @@ class MainUtility(QMainWindow):
 
         return mid_time - start
 
-    def progress_bar_loop(self):
-        counter = 0
-        while True:
-            time.sleep(.7)
-            self.progress_bar.setValue(counter)
-            counter += 1
-
     def para_pwr_test(self):
-        self.parasidic_and_power_test(build_test = True)
+        self.parasidic_and_power_test(build_test = True,progress_bar=self.progress_bar)
 
     def verify_Cable_Test(self):
         self.prog_err_box_contents[0].setVisible(False)
-        self.parasidic_and_power_test(build_test = False)
+        self.parasidic_and_power_test(build_test = False,progress_bar=self.verify_button_prog_bar)
+        # self.update_progress_bar(amount=10, progress_bar=self.verify_button_prog_bar)
+
+    def update_progress_bar(self,amount = 0,progress_bar = None,reset = False):
+        if reset is True:
+            self.progress_bar_counter =0
+            progress_bar.setValue(0)
+        else:
+            self.progress_bar_counter += amount
+            progress_bar.setValue(self.progress_bar_counter)
 
     def eeprom_call(self):
-
+        self.update_progress_bar(reset = True,progress_bar = self.eeprom_prog_bar)
         self.prog_err_box_contents[0].setVisible(False)
+        self.update_progress_bar(amount=10,progress_bar=self.eeprom_prog_bar)
         eeprom_box = self.get_err_display_box()
         eeprom_box[0].setVisible(False)
         self.prog_err_box_contents[1].addWidget(eeprom_box[0])
@@ -1848,22 +1883,29 @@ class MainUtility(QMainWindow):
         metaData_info_list.append("serial @ "+self.meta_data_serial)
         metaData_info_list.append("lead @ "+lead)
         sensor_positions_list = self.get_sensor_positions()
+        self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
 
         if self.continuation_flag:
+            self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
             self.unchanged_hex_ids = self.cont.get_hex_list(with_whitespace = True)
             protection_board= self.get_protection_board_id(1)
             self.unchanged_hex_ids.insert(0,protection_board)
 
         else:
+            self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
             protection_board = self.get_protection_board_id(1)
             self.unchanged_hex_ids.insert(0,protection_board)
             #grab serial num info and lead info
         self.sm.eeprom_program(metaData_info_list,sensor_positions_list,self.unchanged_hex_ids)
+        self.update_progress_bar(amount=20, progress_bar=self.eeprom_prog_bar)
 
         self.programmed_success_message = "EEProm Program Successful!"
         self.final_test_btn.setEnabled(True)
         self.eeprom_btn.setEnabled(False)
+        self.update_progress_bar(amount=20, progress_bar=self.eeprom_prog_bar)
         self.print_to_err_box(eeprom_box, 1)
+        self.update_progress_bar(amount=30, progress_bar=self.eeprom_prog_bar)
+        self.successfully_programmed_eeprom_flag = True
         # self.print_to_err_box(self.prog_err_box_contents[1],1)
 
     def get_sensor_positions(self):
@@ -1961,22 +2003,25 @@ class MainUtility(QMainWindow):
     def csv(self):
         '''This method first check to assure the user has selected a directory and then prints the information into a csv file'''
         try:
-
+            self.update_progress_bar(reset = True,progress_bar=self.final_test_prog_bar)
             self.prog_err_box_contents[0].setVisible(False)
             fail_box = self.get_err_display_box()
             fail_box[0].setVisible(False)
             self.prog_err_box_contents[1].addWidget(fail_box[0])
-
             font = self.font(20,20,True)
+            self.parasidic_and_power_test(build_test=False,final_test=True,progress_bar=self.final_test_prog_bar)#prog bar will be at 100 when it returns from here
 
-            self.parasidic_and_power_test(build_test=False,final_test=True)
             result = self.sm.verify_eeprom(font)
+            self.update_progress_bar(amount=30, progress_bar=self.final_test_prog_bar)
 
             if result is False:
+                self.update_progress_bar(amount=70, progress_bar=self.final_test_prog_bar)
                 self.fail_message = "EEProm Failed"
                 self.print_to_err_box(fail_box,2,build_test=False)
+                self.successfully_programmed_eeprom_flag = False
                 return
 
+            self.update_progress_bar(amount=10, progress_bar=self.final_test_prog_bar)
             if self.eeprom is "" or len(self.eeprom) is 0:
                 eeprom_tuple = self.get_eeprom_id()
                 self.eeprom = eeprom_tuple
@@ -1986,15 +2031,19 @@ class MainUtility(QMainWindow):
             if self.has_protection_board() is True:
                 total_sensors = self.sensor_num[1] + 1
 
+            self.update_progress_bar(amount=10, progress_bar=self.final_test_prog_bar)
             if len(hexlist) != total_sensors or self.eeprom[1] is False or hexlist is False:
                 if self.eeprom[1] is False:
+                    self.update_progress_bar(amount=50, progress_bar=self.final_test_prog_bar)
                     self.fail_message = "failed to Read eeprom \n Please try again"
                     self.print_to_err_box(fail_box,2,build_test=False)
                     return
                 else:
+                    self.update_progress_bar(amount=50, progress_bar=self.final_test_prog_bar)
                     self.fail_message = " Failed to read all Sensors\n Please try again"
                     self.print_to_err_box(fail_box,2,build_test=False)
                     return
+            self.update_progress_bar(amount=10, progress_bar=self.final_test_prog_bar)
             if self.eeprom[1] is True:
 
                 if self.report_dir is "":
@@ -2010,10 +2059,11 @@ class MainUtility(QMainWindow):
                 final_list = self.file_description + self.file_specs
                 x = 0
                 h = 0
+                self.update_progress_bar(amount=10, progress_bar=self.final_test_prog_bar)
                 with open(self.report_dir + "/DTC-" + final_list[0][1] + "-OUTPUT.csv", 'w', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerow(["Description"])
-                    for info in final_list:
+                    for _ in final_list:
                         if x is 0:
                             writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], "EEPROM id:", self.eeprom[0]])
                         elif x is 6:
@@ -2026,10 +2076,9 @@ class MainUtility(QMainWindow):
                         else:
                             writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "-"])
                         x += 1
-                alert = QMessageBox.information(self, "Complete", "A csv file named 'DTC-" + final_list[0][
-                    1] + "-OUTPUT.csv' has been downloaded into your folder " + self.report_dir)
 
         # resetting the list and dictionaries for a new run
+                self.update_progress_bar(amount=20, progress_bar=self.final_test_prog_bar)
                 self.file_btn.setEnabled(True)
                 self.hex_number_lbl.clear()
                 self.pcba_hexList.clear()
@@ -2078,12 +2127,13 @@ class MainUtility(QMainWindow):
                 self.before.clear()
                 self.error_messages.clear()
                 self.wrong_sensors_found_list.clear()
+                self.successfully_programmed_eeprom_flag = False
                 self.settings.setValue("report_file_path", "/path/to/report/folder")
                 ee = list(self.eeprom)
                 ee.clear()
                 self.eeprom = tuple(ee)
                 self.sm.reset_variables()
-
+                self.update_progress_bar(reset=True,progress_bar=self.final_test_prog_bar)
                 self.sm.close_port()
                 self.initUI()
 
