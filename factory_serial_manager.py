@@ -149,9 +149,8 @@ class SerialManager(QObject):
                         else:
                             protection_board_temperature.append(temps[t][34:41])
                             protection_board_hex.append(temps[t][4:24].replace(" ","")+"28")
-
-
                         counter += 1
+
                     hex_list.remove(protection_board_hex[0])
                     protection_board_temperature.pop()
                     protection_board_temperature.pop()
@@ -712,6 +711,37 @@ class SerialManager(QObject):
         self.ser.write("\r\n".encode())
         time.sleep(0.5)
         self.ser.read(self.ser.in_waiting)
+
+    def get_config_call(self):
+        if self.ser.is_open:
+            try:
+                self.flush_buffers()
+                self.ser.write("config \r\n".encode())
+                info = self.ser.read_until(self.end).decode()
+                return info
+
+            except err:
+                print(err)
+
+    def config_strong_pull_setting(self,turn_on = False):
+        if self.ser.is_open:
+            if turn_on:
+                self.ser.write("strong-pu 1 \r\n".encode())
+
+            else:
+                self.ser.write("strong-pu 0 \r\n".encode())
+
+        else:
+            inform = QMessageBox.warning(self.page_dialog,"Port Closed","Select a port in the 'Serial' tab above ")
+
+    def get_temps_call(self):
+        if self.ser.is_open:
+            self.flush_buffers()
+            self.ser.write("temps \r\n".encode())
+            info = self.ser.read_until(self.end).decode()
+            return info
+        else:
+            inform = QMessageBox.information(self.page_dialog,"port closed","Port is closed please open")
 
     def reset_variables(self):
         self.memory = ''

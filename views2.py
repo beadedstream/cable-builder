@@ -4,6 +4,7 @@ import re
 import sys
 import time
 import Continuation
+import test_page
 import factory_serial_manager
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QSettings, Qt, QThread
@@ -187,7 +188,6 @@ class MainUtility(QMainWindow):
         self.test_btn.setText("Test")
         self.test_btn.setFont(self.font(20, 75, True))
         self.test_btn.clicked.connect(self.testScreen)
-        self.test_btn.setEnabled(False)
 
         self.calibrate_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.calibrate_btn.setGeometry(QtCore.QRect(655, 400, 180, 160))
@@ -362,22 +362,6 @@ class MainUtility(QMainWindow):
         self.build_error_box = self.get_err_display_box()
         self.build_error_box[0].setVisible(False)
 
-        # self.build_update_btn_frame = self.create_square_frame(0)
-        # self.build_update_btn = QtWidgets.QPushButton(self.build_update_btn_frame)
-        # self.build_update_btn.setText("Update")
-        # self.build_update_btn.setFont(self.font(10, 10, True))
-        # self.build_update_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        # self.build_update_btn.setVisible(False)
-        # self.build_update_btn.clicked.connect('''function to update button''')
-
-        # self.build_ignore_btn_frame = self.create_square_frame(0)
-        # self.build_ignore_btn = QtWidgets.QPushButton(self.build_ignore_btn_frame)
-        # self.build_ignore_btn.setText("Ignore")
-        # self.build_ignore_btn.setFont(self.font(10, 10, True))
-        # self.build_ignore_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        # self.build_ignore_btn.setVisible(False)
-        # self.build_ignore_btn.clicked.connect(self.change_error_box)
-
         self.build_dtc_serial_lbl = QtWidgets.QLabel()
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
@@ -468,6 +452,15 @@ class MainUtility(QMainWindow):
         self.four_tab_window.setTabText(self.four_tab_window.indexOf(self.program_tab), "Program")
 
         self.setCentralWidget(self.build_central_widget)
+
+    def testScreen(self):
+        test_screen = test_page.test_buildScreen(self.main_central_widget,self.sm)
+
+        print("hello weeblo")
+
+
+        self.setCentralWidget(test_screen)
+
 
     def create_square_frame(self, frame_type, x=0, y=0, length=200, height=200):
         if frame_type == 0:
@@ -725,9 +718,6 @@ class MainUtility(QMainWindow):
         self.settings_widget.close()
 
     def calibrateScreen(self):
-        central_widget = QWidget()
-
-    def testScreen(self):
         central_widget = QWidget()
 
     def scan_images(self):
@@ -1947,6 +1937,7 @@ class MainUtility(QMainWindow):
                     id_list.remove(id)
                 # elif id in self.unchanged_hex_ids:
             return id_list[0]
+
     def awake(self):
         '''This a loop that sends a command to the D505 to keep it awake '''
         while True:
@@ -2199,7 +2190,6 @@ class MainUtility(QMainWindow):
         if confirmation == QMessageBox.Yes:
             self.serial_thread.quit()
             self.serial_thread.wait()
-            self.sm.close_port()
             event.accept()
         else:
             event.ignore()
