@@ -455,12 +455,7 @@ class MainUtility(QMainWindow):
 
     def testScreen(self):
         test_screen = test_page.test_buildScreen(self.main_central_widget,self.sm)
-
-        print("hello weeblo")
-
-
         self.setCentralWidget(test_screen)
-
 
     def create_square_frame(self, frame_type, x=0, y=0, length=200, height=200):
         if frame_type == 0:
@@ -1532,7 +1527,7 @@ class MainUtility(QMainWindow):
             self.update_progress_bar(150,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
-        elif self.power_end[2] is True and self.power_end[5] is True:
+        elif self.power_end[2] is True and self.power_end[5] is True:#Both pass Test
             self.pass_flag = True
             self.update_progress_bar(10,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
@@ -1680,8 +1675,7 @@ class MainUtility(QMainWindow):
             box[1].addWidget(fail_message,0,0,11,11)
 
             self.prog_err_box_contents[1].addWidget(box[0],11,1,2,11)
-
-            # self.program_gridLayout.addWidget(box[0],12,1,2,11)
+            self.program_gridLayout.addWidget(box[0],12,1,2,11)
 
     def update_temperatures(self,temps_list,hex_list,build_test,total_sensors):
         try:

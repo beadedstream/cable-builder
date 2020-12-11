@@ -375,7 +375,6 @@ class SerialManager(QObject):
 
 
                 if len(self.pwr_ids) != total_sensor_amount or len(self.pwr_temps) != total_sensor_amount:
-                    self.ser.write("sonic-pwr 1\r\n".encode())
                     self.test_result_tuple = ("Power Test fail:", "Powered Test Failed \n Failed to read All Sensors!\n"
                                               + str(len(self.pwr_ids)) + " out of " + str(total_sensor_amount) + "\n"
                                               + "Temperatures: " + str(len(self.pwr_temps)) + " out of " + str(
@@ -432,6 +431,7 @@ class SerialManager(QObject):
             except Exception:
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
                                                    "There was an error with the powered test\n Please Try again")
+
             except ValueError:
                 value_err = QMessageBox.critical(self.page_dialog, "Parsing Error",
                                                  "There was an Error parsing the information\n please try to re-connect or rescan the sensor")
@@ -458,10 +458,6 @@ class SerialManager(QObject):
         self.para_err_dict = dict()
         if self.ser.is_open:
             try:
-                # Parasidic Test
-                # self.ser.write("sonic-pwr 0\r\n".encode())
-                # self.ser.write("strong-pu 1\r\n".encode())
-
                 self.para_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
 
                 if len(self.pwr_temps) != total_sensor_amount:
@@ -470,9 +466,22 @@ class SerialManager(QObject):
                     return ("Missing temps", "failed to read temperatures", False)
 
                 # setting it back to normal and checking they all work
+                self.ser.write("sonic-pwr 0\r\n".encode())
+                self.ser.write("strong-pu 0\r\n".encode())
+                self.flush_buffers()
+
+                dead_temps = self.hex_or_temps_parser(1, "1")
+                dead_temps_list = list()
+                for t in dead_temps:
+                    if t == 99:
+                        dead_temps_list.append(t)
+
                 self.ser.write("sonic-pwr 1\r\n".encode())
                 self.ser.write("strong-pu 0\r\n".encode())
                 self.flush_buffers()
+
+                if len(dead_temps_list) > 0:
+                    return ("Temperature Failure","There is a dead Sensor",False)
 
                 temp_err = list()
                 temps = self.hex_or_temps_parser(1, "1")
@@ -497,11 +506,6 @@ class SerialManager(QObject):
                     result_tuple = ("Bad Sensor", final_temp_reading, False)
                 else:
                     result_tuple = ("Successful Parasidic Results", self.para_dict, True)
-
-                self.ser.write("sonic-pwr 1\r\n".encode())
-                garbage = self.ser.read_until(self.end)
-                self.ser.write("strong-pu 0 \n\r".encode())
-                gabage = self.ser.read_until(self.end)
 
                 return result_tuple
 
