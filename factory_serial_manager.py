@@ -24,11 +24,13 @@ class SerialManager(QObject):
 
     def __init__(self):
         super().__init__()
+        print(serial.__file__)
         self.fluke = serial.Serial(None, 9600, timeout=60, parity=serial.PARITY_NONE, rtscts=False,
                                    xonxoff=False, dsrdtr=False, write_timeout=None)
         self.ser = serial.Serial(None, 115200, timeout=60,
                                  parity=serial.PARITY_NONE, rtscts=False,
                                  xonxoff=False, dsrdtr=False, write_timeout=None)
+
 
         self.memory = ''
         self.counter = 0  # this counter is not the same as the views file but it does share the same value by -1
@@ -40,12 +42,19 @@ class SerialManager(QObject):
         self.unchanged_ids = list()
         self.hex_list = list()
         self.pwr_ids = list()
-        self.hex_id_dict= dict()
+        self.hex_id_dict = dict()
         self.pwr_temps = list()
         self.hex_memory = list()
         self.eeprom = str()
         self.total_pcba_num = 0
         self.end = b"\r\n>"
+
+    def resource_path(self, relative_path):
+        """Gets the path of the application relative root path to allow us
+        to find the logo."""
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
 
     def scan_ports():
         """Scan and return list of connected comm ports."""
@@ -83,7 +92,7 @@ class SerialManager(QObject):
                                                "The board was not able to remain awake")
 
     @pyqtSlot()
-    def check_temperatures(self,temp_list,id_list):
+    def check_temperatures(self, temp_list, id_list):
         counter = 0
         err_dict = dict()
         pass_dict = dict()
@@ -98,20 +107,19 @@ class SerialManager(QObject):
                 pass_dict[id_list[counter]] = t
             counter += 1
 
-
         if len(err_dict) > 0:
-            err_dict[False]=False
+            err_dict[False] = False
             return err_dict
         else:
             pass_dict[True] = True
             return pass_dict
 
     @pyqtSlot()
-    def hex_or_temps_parser(self, key, port,optional = False):
+    def hex_or_temps_parser(self, key, port, optional=False):
         '''This function grabs either the hex or temps from the cable and returns it as a list'''
         if self.ser.is_open:
             try:
-                self.ser.write(("temps "+port+" \r\n").encode())
+                self.ser.write(("temps " + port + " \r\n").encode())
                 temps = self.ser.read_until(self.end).decode().split("\r\n")
                 temp_list = list()
                 hex_list = list()
@@ -138,7 +146,7 @@ class SerialManager(QObject):
                         temp_list.append(float(t))
                     return temp_list
 
-                elif key == 2 and isinstance(temps,list)and temps[2][2] != '0' :
+                elif key == 2 and isinstance(temps, list) and temps[2][2] != '0':
                     counter = 0
                     protection_board_temperature = list()
                     protection_board_hex = list()
@@ -148,7 +156,7 @@ class SerialManager(QObject):
                             temp_list.append(temps[t][34:41])
                         else:
                             protection_board_temperature.append(temps[t][34:41])
-                            protection_board_hex.append(temps[t][4:24].replace(" ","")+"28")
+                            protection_board_hex.append(temps[t][4:24].replace(" ", "") + "28")
                         counter += 1
 
                     hex_list.remove(protection_board_hex[0])
@@ -159,9 +167,9 @@ class SerialManager(QObject):
 
                     hex_list.pop()
                     hex_list.pop()
-                    if len(protection_board_hex) > 0 or len(protection_board_temperature)>0:
+                    if len(protection_board_hex) > 0 or len(protection_board_temperature) > 0:
                         temp_list.insert(0, protection_board_temperature[0])
-                        hex_list.insert(0,protection_board_hex[0])
+                        hex_list.insert(0, protection_board_hex[0])
 
                     t_list = temp_list.copy()
                     temp_list.clear()
@@ -169,10 +177,10 @@ class SerialManager(QObject):
                     for t in t_list:
                         temp_list.append(float(t))
 
-                    pcba = (hex_list,temp_list)
+                    pcba = (hex_list, temp_list)
                     return pcba
 
-                elif key ==3:
+                elif key == 3:
                     if optional:
                         for hex in range(3, len(temps)):
                             hex_list.append(temps[hex][6:24].strip())
@@ -230,7 +238,7 @@ class SerialManager(QObject):
 
     def get_unchanged_ids(self):
         if len(self.unchanged_ids) == 0:
-            self.unchanged_ids = self.hex_or_temps_parser(3,"1",True)
+            self.unchanged_ids = self.hex_or_temps_parser(3, "1", True)
             return self.unchanged_ids
 
         return self.unchanged_ids
@@ -254,7 +262,8 @@ class SerialManager(QObject):
                         hex_number = hex_number + " 28"  # family code
                         print("hex_number: ", hex_number)
 
-                        if str(hex_number) in self.hex_list:# this is activated if the hex is the same as previously scanned
+                        if str(
+                                hex_number) in self.hex_list:  # this is activated if the hex is the same as previously scanned
                             pass
                         else:
                             self.counter += 1
@@ -276,9 +285,9 @@ class SerialManager(QObject):
             return -1
 
     @pyqtSlot()
-    def messageBox(self,type,title,description,button):
+    def messageBox(self, type, title, description, button):
         call = QDialog()
-        message = QMessageBox.critical(call,title,description,button)
+        message = QMessageBox.critical(call, title, description, button)
         if message == QMessageBox.Ok:
             return message
 
@@ -315,7 +324,8 @@ class SerialManager(QObject):
                                                  "There was an error trying to load the board")
 
     @pyqtSlot()
-    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, progress_bar_counter, has_protection_board, build_test=True):
+    def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, progress_bar_counter, has_protection_board,
+                   build_test=True):
 
         self.powered_temp_dict = dict()
         self.err_pwr_dict = dict()
@@ -323,7 +333,7 @@ class SerialManager(QObject):
         self.wake_up_call()
         self.flush_buffers()
 
-        progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+        progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
         if has_protection_board is True:
             total_sensor_amount += 1
@@ -336,9 +346,9 @@ class SerialManager(QObject):
 
                     self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
                     self.ser.write(" \r\n".encode())
-                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
                 else:
-                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 self.flush_buffers()
 
@@ -346,33 +356,31 @@ class SerialManager(QObject):
                 self.ser.write("strong-pu 0\r\n".encode())
                 pwr_pu = self.ser.read_until(self.end).decode()
 
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 self.ser.write("sonic-pwr 1\r\n".encode())
                 pwr_sonic = self.ser.read_until(self.end).decode()
                 id_dict = pcba_id_dict.copy()
                 self.hex_id_dict = pcba_id_dict.copy()
 
-                self.pwr_ids,self.pwr_temps = self.hex_or_temps_parser(2, "1")
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                self.pwr_ids, self.pwr_temps = self.hex_or_temps_parser(2, "1")
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 # sensor checks
                 matching_Sensors = self.verify_pcba(id_dict, total_sensor_amount)
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
-
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 if isinstance(matching_Sensors, list):
-                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
-                    return ('Wrong id', matching_Sensors, False,progress_bar_counter)  # EXIT 1
+                    return ('Wrong id', matching_Sensors, False, progress_bar_counter)  # EXIT 1
 
                 if isinstance(matching_Sensors, tuple):
-                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                     return matching_Sensors  # EXIT 2 tuple add counter
 
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
-
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 if len(self.pwr_ids) != total_sensor_amount or len(self.pwr_temps) != total_sensor_amount:
                     self.test_result_tuple = ("Power Test fail:", "Powered Test Failed \n Failed to read All Sensors!\n"
@@ -380,7 +388,7 @@ class SerialManager(QObject):
                                               + "Temperatures: " + str(len(self.pwr_temps)) + " out of " + str(
                         total_sensor_amount), False)
                 else:
-                    progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                     sensor_information_dict = self.check_temperatures(self.pwr_temps, self.pwr_ids)
                     if False in sensor_information_dict:
@@ -389,10 +397,11 @@ class SerialManager(QObject):
                     else:
                         sensor_information_dict.pop(True)
                         self.powered_temp_dict = sensor_information_dict
-                    progress_bar_counter  = self.update_prog_bar(progress_bar_counter,progBar)
+                    progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                     if len(err_dict) == total_sensor_amount:
-                        return ("Test Fail", "Cable Power Failure: All the sensors return 85", False,progress_bar_counter)
+                        return (
+                        "Test Fail", "Cable Power Failure: All the sensors return 85", False, progress_bar_counter)
 
                     elif len(err_dict) > 0 and len(err_dict) < total_sensor_amount:
                         temp_err_dict = dict()
@@ -402,19 +411,19 @@ class SerialManager(QObject):
                             elif err_dict.get(hex) == 99:
                                 temp_err_dict[pcba_id_dict.get(hex)] = 99
                         if len(temp_err_dict) > 0:
-                            return ("Power Failure", temp_err_dict, False,progress_bar_counter)
+                            return ("Power Failure", temp_err_dict, False, progress_bar_counter)
 
                     else:
                         self.test_result_tuple = ("Powered Test Pass", self.powered_temp_dict, True)
 
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
                 if build_test is False:
-                    result = self.test_result_tuple +(progress_bar_counter,)
+                    result = self.test_result_tuple + (progress_bar_counter,)
                     return result
 
-                #TODO: below is only for the build test,this may change over time if the honcho wants para test to be done :)
+                # TODO: below is only for the build test,this may change over time if the honcho wants para test to be done :)
                 parasidic_test_results = self.parasidic_Test(total_sensor_amount, pcba_id_dict)
-                progress_bar_counter = self.update_prog_bar(progress_bar_counter,progBar)
+                progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
 
                 test_result_dict = dict()
                 if self.test_result_tuple[2] is False and isinstance(self.test_result_tuple[1], list) and \
@@ -422,11 +431,11 @@ class SerialManager(QObject):
                     hex = 0
                     for temp in parasidic_test_results[1]:
                         test_result_dict[self.test_result_tuple[1][hex]] = temp
-                    return ("Failed Test", test_result_dict, False,progress_bar_counter)
+                    return ("Failed Test", test_result_dict, False, progress_bar_counter)
                 self.test_result_tuple += parasidic_test_results
 
                 result = self.test_result_tuple + (progress_bar_counter,)
-                return result # EXIT 3
+                return result  # EXIT 3
 
             except Exception:
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
@@ -444,9 +453,9 @@ class SerialManager(QObject):
                 self.page_dialog.close()
             return -1
 
-    #TODO: CREATE A FUNCTION FOR THE PROGRES BAR INCREMETATION THAT PASSES BY REFRERENCE REATHER BY VALUE, IT WOULD BE BEST IF I DOES NOT RETURN ANYTHING AN THE PROG BAR AND COUNTER ARE GLOBAL.
-    def update_prog_bar(self,counter,prog_bar):
-        counter +=10
+    # TODO: CREATE A FUNCTION FOR THE PROGRES BAR INCREMETATION THAT PASSES BY REFRERENCE REATHER BY VALUE, IT WOULD BE BEST IF I DOES NOT RETURN ANYTHING AN THE PROG BAR AND COUNTER ARE GLOBAL.
+    def update_prog_bar(self, counter, prog_bar):
+        counter += 10
         prog_bar.setValue(counter)
         return counter
 
@@ -481,7 +490,7 @@ class SerialManager(QObject):
                 self.flush_buffers()
 
                 if len(dead_temps_list) > 0:
-                    return ("Temperature Failure","There is a dead Sensor",False)
+                    return ("Temperature Failure", "There is a dead Sensor", False)
 
                 temp_err = list()
                 temps = self.hex_or_temps_parser(1, "1")
@@ -553,7 +562,7 @@ class SerialManager(QObject):
                 return ("Cable Verify Failed\n", "There was an error with the test\n Please Try again", False)
 
     @pyqtSlot()
-    def eeprom_program(self,top_list,sensor_positions_list,hex_list_to_be_sent):
+    def eeprom_program(self, top_list, sensor_positions_list, hex_list_to_be_sent):
         if self.ser.is_open:
             try:
                 self.flush_buffers()
@@ -566,21 +575,21 @@ class SerialManager(QObject):
                 self.flush_buffers()
 
                 bottom_of_list = self.get_meta_data_info()
-                config_list = top_list+bottom_of_list
+                config_list = top_list + bottom_of_list
 
                 self.metadata_information = config_list.copy()
 
                 for line in reversed(config_list):
-                    self.ser.write(("tac-ee-meta 1 w "+line+"\r\n").encode())
+                    self.ser.write(("tac-ee-meta 1 w " + line + "\r\n").encode())
                     chk = self.ser.read_until(self.end).decode()
                     time.sleep(1)
                 self.ser.write(" \r\n".encode())
                 check = self.ser.read_until(self.end).decode()
 
-                #load ids
+                # load ids
                 self.flush_buffers()
                 if hex_list_to_be_sent is False or len(hex_list_to_be_sent) != len(sensor_positions_list):
-                    show = QMessageBox.critical(self.page_dialog,"warning","Failed to program\n Please Try Again")
+                    show = QMessageBox.critical(self.page_dialog, "warning", "Failed to program\n Please Try Again")
                     return
 
                 # sensor Position loader
@@ -597,13 +606,13 @@ class SerialManager(QObject):
 
                 self.program_eeprom_flag = True
 
-                self.flush_buffers() #TODO: I dont know why the d505 board is still reading after the test was done, this buffer is an attempt to get it to shut down
+                self.flush_buffers()  # TODO: I dont know why the d505 board is still reading after the test was done, this buffer is an attempt to get it to shut down
 
             except:
                 self.ser.write(" \r\n".encode())
 
     @pyqtSlot()
-    def get_eeprom(self,other_call = False):
+    def get_eeprom(self, other_call=False):
         if self.ser.is_open:
             try:
                 if self.program_eeprom_flag is True:
@@ -611,7 +620,7 @@ class SerialManager(QObject):
                 elif other_call is True:
                     if self.eeprom == "":
                         self.check_eeprom()
-                        if self.eeprom =="":
+                        if self.eeprom == "":
                             return False
                     return self.eeprom
                 else:
@@ -629,13 +638,13 @@ class SerialManager(QObject):
             info = self.ser.read_until(self.end).decode()
             info_grab = info.split("\r\n")
             if len(info_grab) > 40:
-                return ("Missing EEProm","Missing EEProm",False)
+                return ("Missing EEProm", "Missing EEProm", False)
             for s in info_grab:
-                if s[:6] == "eeprom":#might need to put a break once the eeprom is found
+                if s[:6] == "eeprom":  # might need to put a break once the eeprom is found
                     self.eeprom = s[6:]
             return True
 
-    def verify_eeprom(self,font):
+    def verify_eeprom(self, font):
         if self.ser.is_open:
             try:
                 self.page_dialog.setFont(font)
@@ -645,11 +654,14 @@ class SerialManager(QObject):
                 result = self.ser.read_until(self.end).decode()
                 result_list = result.split('\r\n')
 
-                if len(result_list)< 14:
-                    infrom = QMessageBox.critical(self.page_dialog,"Metadata Failed","***Bad output***\n"+result,QMessageBox.Close)
+                if len(result_list) < 14:
+                    infrom = QMessageBox.critical(self.page_dialog, "Metadata Failed", "***Bad output***\n" + result,
+                                                  QMessageBox.Close)
                     return False
 
-                inform = QMessageBox.information(self.page_dialog, "Final Test Results","***Does this information look Correct?***\n\n"+result,QMessageBox.Yes|QMessageBox.No)
+                inform = QMessageBox.information(self.page_dialog, "Final Test Results",
+                                                 "***Does this information look Correct?***\n\n" + result,
+                                                 QMessageBox.Yes | QMessageBox.No)
 
                 if inform == QMessageBox.Yes:
                     return True
@@ -657,21 +669,22 @@ class SerialManager(QObject):
                     return False
 
             except info:
-                message = QMessageBox.warning(self.page_dialog,"Error Detected",info)
+                message = QMessageBox.warning(self.page_dialog, "Error Detected", info)
                 return
 
     def get_meta_data_info(self):
-        meta_data_list= list()
+        meta_data_list = list()
         current_date = self.get_date()
-        meta_data_list.append("date created @ "+current_date)
-        meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")#this will always be the same unless you have been directed to change same goes with hardware
+        meta_data_list.append("date created @ " + current_date)
+        meta_data_list.append(
+            "coefficients @ 43.0,-0.18,0.000139")  # this will always be the same unless you have been directed to change same goes with hardware
         meta_data_list.append("hardware @ 1.0d")
         return meta_data_list
 
-    def get_date(self,with_dash = False):
+    def get_date(self, with_dash=False):
         dt = date.today()
         if with_dash:
-             return dt.strftime("%m-%d-%y")
+            return dt.strftime("%m-%d-%y")
         else:
             return dt.strftime("%m%d%y")
 
@@ -727,7 +740,7 @@ class SerialManager(QObject):
             except err:
                 print(err)
 
-    def config_strong_pull_setting(self,turn_on = False):
+    def config_strong_pull_setting(self, turn_on=False):
         if self.ser.is_open:
             if turn_on:
                 self.ser.write("strong-pu 1 \r\n".encode())
@@ -736,7 +749,7 @@ class SerialManager(QObject):
                 self.ser.write("strong-pu 0 \r\n".encode())
 
         else:
-            inform = QMessageBox.warning(self.page_dialog,"Port Closed","Select a port in the 'Serial' tab above ")
+            inform = QMessageBox.warning(self.page_dialog, "Port Closed", "Select a port in the 'Serial' tab above ")
 
     def get_temps_call(self):
         if self.ser.is_open:
@@ -745,7 +758,7 @@ class SerialManager(QObject):
             info = self.ser.read_until(self.end).decode()
             return info
         else:
-            inform = QMessageBox.information(self.page_dialog,"port closed","Port is closed please open")
+            inform = QMessageBox.information(self.page_dialog, "port closed", "Port is closed please open")
 
     def reset_variables(self):
         self.memory = ''
@@ -765,5 +778,4 @@ class SerialManager(QObject):
 
     def close_port(self):
         """Closes serial port."""
-        self.flush_buffers()
         self.ser.close()

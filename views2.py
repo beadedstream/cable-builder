@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import time
+import serial
 import Continuation
 import test_page
 import factory_serial_manager
@@ -29,7 +30,9 @@ class MainUtility(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        print("abilibilibop: "+serial.__file__)
 
+        self.current_directory = os.getcwd()
         self.system_font = QApplication.font().family()
         self.label_font = QFont(self.system_font, 12)
         self.config_font = QFont(self.system_font, 12)
@@ -1748,33 +1751,33 @@ class MainUtility(QMainWindow):
         self.connector_image_type = list()
         try:
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and senso.jpg")
+                self.current_directory + "\\Pictures\\cable and senso.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and protection PCBA_rev2.jpg")
+                self.current_directory + "\\Pictures\\cable and protection PCBA_rev2.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and protection PCBA with marker_rev2.jpg")
+                self.current_directory + "\\Pictures\\cable and protection PCBA with marker_rev2.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and molded sensor.jpg")
+                self.current_directory + "\\Pictures\\cable and molded sensor.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and molded RA sensor.jpg")
+                self.current_directory + "\\Pictures\\cable and molded RA sensor.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\h_logo.png")
+                self.current_directory + "\\Pictures\\h_logo.png")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\left-arrow.png")
+                self.current_directory + "\\Pictures\\left-arrow.png")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\right-arrow.png")
+                self.current_directory + "\\Pictures\\right-arrow.png")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and molded RA protection.jpg")
+                self.current_directory + "\\Pictures\\cable and molded RA protection.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and molded protection.jpg")
+                self.current_directory + "\\Pictures\\cable and molded protection.jpg")
             self.cable_image_list.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\cable and molded protection_with_marker.jpg")
+                self.current_directory + "\\Pictures\\cable and molded protection_with_marker.jpg")
 
 
             self.connector_image_type.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\Flying leads.jpg")
+                self.current_directory + "\\Pictures\\Flying leads.jpg")
             self.connector_image_type.append(
-                "C:\\Users\\Isaac's PC\\Desktop\\AAAAAAAAAAAAAAAAAAAAA\\Pictures\\XLR connector.jpg")
+                self.current_directory + "\\Pictures\\XLR connector.jpg")
             # self.connector_type.append("Lemmo connector.jpg") to be created in future name of pic will be different
         except:
             inform = QMessageBox.information(self, "Images Not Found", "There was an error trying to find the images")
