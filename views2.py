@@ -312,13 +312,9 @@ class MainUtility(QMainWindow):
         arrow_frame.setLayout(arrow_grid)
 
         left_arrow_icon = QtGui.QIcon()
-        left_arrow_icon.addPixmap(
-            QtGui.QPixmap(self.cable_image_list[6]),
-            QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        left_arrow_icon.addPixmap(QtGui.QPixmap(self.cable_image_list[6]),QtGui.QIcon.Normal, QtGui.QIcon.Off)
         right_arrow_icon = QtGui.QIcon()
-        right_arrow_icon.addPixmap(
-            QtGui.QPixmap(self.cable_image_list[7]),
-            QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        right_arrow_icon.addPixmap(QtGui.QPixmap(self.cable_image_list[7]),QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self.left_arrow_btn = QtWidgets.QPushButton()
         self.left_arrow_btn.setIcon(left_arrow_icon)
@@ -848,12 +844,12 @@ class MainUtility(QMainWindow):
 
     def prep_information(self):
         """ Grabs the file path for the Select File"""
-        # if self.sm.check_port() is False: #TODO:Take this comment off and let it beee
-        #     return
+        if self.sm.check_port() is False:
+            return
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
-                                                      "Excel (*.csv *.xlsx *.tsv)")#other options ->;;PDF(*.pdf)");;text(*.txt);;html(*.html)")
+                                                      "Excel (*.csv *.xlsx *.tsv)")
             if (select_file[0] is ''):
                 return
             else:
@@ -875,7 +871,6 @@ class MainUtility(QMainWindow):
                 file_desc = self.cont.get_description_contents()
             else:
                 # this loop splits info into individual list
-
                 for descript_cont in range(1, 7):
                     file_desc.append(self.file_contents[descript_cont].split(","))
 
@@ -1067,7 +1062,7 @@ class MainUtility(QMainWindow):
                                          QMessageBox.Ok)
 
             if error == QMessageBox.Ok:
-                file.close()
+                # file.close()
                 self.prep_information()
 
     def grid(self, frame, boxNum):
@@ -1086,8 +1081,8 @@ class MainUtility(QMainWindow):
         frame_grid.setHorizontalSpacing(1)
         frame_grid.addWidget(component, 0, 0)
         frame_grid.addWidget(mold, 0, 2)
-        frame_grid.addWidget(section, 0, 4)
-        frame_grid.addWidget(cable, 0, 6)
+        frame_grid.addWidget(section, 0, 3)
+        frame_grid.addWidget(cable, 0, 5)
         frame_grid.setRowStretch(35, 1)
 
         if boxNum is 1:
