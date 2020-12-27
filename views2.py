@@ -30,7 +30,6 @@ class MainUtility(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        print("abilibilibop: "+serial.__file__)
 
         self.current_directory = os.getcwd()
         self.system_font = QApplication.font().family()
@@ -39,7 +38,7 @@ class MainUtility(QMainWindow):
         self.config_path_font = QFont(self.system_font, 12)
 
         self.sm = factory_serial_manager.SerialManager()
-        self.serial_thread = QThread()  # check later if the thread becomes a problem when you reset the program
+        self.serial_thread = QThread()
         self.sm.moveToThread(self.serial_thread)
         self.serial_thread.start()
 
@@ -76,6 +75,7 @@ class MainUtility(QMainWindow):
 
         # Create menubar
         self.menubar = self.menuBar()
+        self.menubar.setFont(self.font(15,15,True))
         self.file_menu = self.menubar.addMenu("&File")
         self.file_menu.addAction(self.config)
         self.file_menu.addAction(self.quit)
@@ -288,14 +288,14 @@ class MainUtility(QMainWindow):
         self.start_btn_frame = self.create_square_frame(0)
         self.start_button = QtWidgets.QPushButton(self.start_btn_frame)
         self.start_button.setText("Scan")
-        self.start_button.setFont(self.font(10, 10, True))
+        self.start_button.setFont(self.font(20, 20, True))
         self.start_button.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.start_button.clicked.connect(self.start_scan)
 
         self.sort_btn_frame = self.create_square_frame(0)
         self.sort_btn = QPushButton(self.sort_btn_frame)
         self.sort_btn.setText("Sort")
-        self.sort_btn.setFont(self.font(10, 10, True))
+        self.sort_btn.setFont(self.font(20, 20, True))
         self.sort_btn.setGeometry(0, 0, 100, 100)
         self.sort_btn.setEnabled(self.sensor_num[0])
         self.sort_btn.clicked.connect(self.OneWireSort)
@@ -304,7 +304,7 @@ class MainUtility(QMainWindow):
         self.replace_btn = QPushButton(self.replace_btn_frame)
         self.replace_btn.setText("Replace \nSensor\n Board")
         self.replace_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
-        self.replace_btn.setFont(self.font(10,10,True))
+        self.replace_btn.setFont(self.font(15,15,True))
         self.replace_btn.clicked.connect(self.boardReplace)
 
         arrow_frame = QtWidgets.QFrame()
@@ -357,8 +357,8 @@ class MainUtility(QMainWindow):
 
         self.powered_test_btn_frame = self.create_square_frame(0)
         self.powered_test_btn = QtWidgets.QPushButton(self.powered_test_btn_frame)
-        self.powered_test_btn.setText("Test Cable")
-        self.powered_test_btn.setFont(self.font(10, 10, True))
+        self.powered_test_btn.setText("Test\n Cable")
+        self.powered_test_btn.setFont(self.font(15, 15, True))
         self.powered_test_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.powered_test_btn.clicked.connect(self.para_pwr_test)
 
@@ -404,8 +404,8 @@ class MainUtility(QMainWindow):
         self.verify_button_prog_bar = self.create_progress_bar(verify_prog_bar_frame,100)
         self.cable_verify_btn_frame = self.create_square_frame(0)
         self.cable_verify_btn = QPushButton(self.cable_verify_btn_frame)
-        self.cable_verify_btn.setText("Cable Verify")
-        self.cable_verify_btn.setFont(self.font(10, 10, True))
+        self.cable_verify_btn.setText("Cable \nVerify")
+        self.cable_verify_btn.setFont(self.font(15, 15, True))
         self.cable_verify_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
 
@@ -415,7 +415,7 @@ class MainUtility(QMainWindow):
         self.eeprom_btn = QPushButton(self.eeprom_btn_frame)
         self.eeprom_btn.setEnabled(False)
         self.eeprom_btn.setText("Program \nEEPROM")
-        self.eeprom_btn.setFont(self.font(10, 10, False))
+        self.eeprom_btn.setFont(self.font(15, 15, False))
         self.eeprom_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.eeprom_btn.clicked.connect(self.eeprom_call)
 
@@ -424,7 +424,7 @@ class MainUtility(QMainWindow):
         self.final_test_btn_frame = self.create_square_frame(0)
         self.final_test_btn = QPushButton(self.final_test_btn_frame)
         self.final_test_btn.setText("Final Test")
-        self.final_test_btn.setFont(self.font(10, 10, True))
+        self.final_test_btn.setFont(self.font(15, 15, True))
         self.final_test_btn.setGeometry(QtCore.QRect(0, 0, 100, 100))
         self.final_test_btn.setEnabled(False)
         self.final_test_btn.clicked.connect(self.csv)
@@ -453,6 +453,8 @@ class MainUtility(QMainWindow):
         self.four_tab_window.setTabText(self.four_tab_window.indexOf(self.scan_tab), "Scan")
         self.four_tab_window.setTabText(self.four_tab_window.indexOf(self.build_tab), "Build")
         self.four_tab_window.setTabText(self.four_tab_window.indexOf(self.program_tab), "Program")
+
+        self.four_tab_window.setFont(self.font(15,15,True))
 
         self.setCentralWidget(self.build_central_widget)
 
@@ -879,8 +881,8 @@ class MainUtility(QMainWindow):
 
             # top labels for each page
             self.dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
-            self.build_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
-            self.prog_dtc_serial_lbl.setText("Serial: DTC" + file_desc[0][1])
+            self.build_dtc_serial_lbl.setText("Serial: DTC" + file_desc[1][1])
+            self.prog_dtc_serial_lbl.setText("Serial: DTC" + file_desc[1][1])
             self.meta_data_serial = file_desc[0][1]
 
             if self.continuation_flag:
