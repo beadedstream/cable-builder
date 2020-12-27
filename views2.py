@@ -202,7 +202,7 @@ class MainUtility(QMainWindow):
         self.manufacture_btn = QtWidgets.QPushButton(self.main_scroll_window)  # self.main_scroll_window)
         self.manufacture_btn.setGeometry(QtCore.QRect(400, 400, 180, 160))
         self.manufacture_btn.setText("Manufacture")
-        self.manufacture_btn.setFont(self.font(20, 75, True))
+        self.manufacture_btn.setFont(self.font(17, 75, True))
         self.manufacture_btn.clicked.connect(self.buildScreen)
 
         self.scrollArea.setWidget(self.main_scroll_window)
@@ -846,8 +846,8 @@ class MainUtility(QMainWindow):
 
     def prep_information(self):
         """ Grabs the file path for the Select File"""
-        if self.sm.check_port() is False:
-            return
+        # if self.sm.check_port() is False: #TODO:Take this comment off and let it beee
+        #     return
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
@@ -924,12 +924,15 @@ class MainUtility(QMainWindow):
             desc_lbl.append(QLabel(file_desc[5][0]))
             desc_lbl.append(QLabel(file_desc[5][1]))
 
-            desc_lbl[0].setFont(self.font(12, 20, True))
-            desc_lbl[2].setFont(self.font(12, 20, True))
-            desc_lbl[4].setFont(self.font(12, 20, True))
-            desc_lbl[6].setFont(self.font(12, 20, True))
-            desc_lbl[8].setFont(self.font(12, 20, True))
-            desc_lbl[10].setFont(self.font(12, 20, True))
+            for num in range(len(desc_lbl)):
+                desc_lbl[num].setFont(self.font(15,20,False))
+
+            desc_lbl[0].setFont(self.font(20, 20, True))
+            desc_lbl[2].setFont(self.font(20, 20, True))
+            desc_lbl[4].setFont(self.font(20, 20, True))
+            desc_lbl[6].setFont(self.font(20, 20, True))
+            desc_lbl[8].setFont(self.font(20, 20, True))
+            desc_lbl[10].setFont(self.font(20, 20, True))
             desc_lbl[11].setTextFormat(Qt.AutoText)
 
             self.file_description = file_desc.copy()
@@ -945,11 +948,17 @@ class MainUtility(QMainWindow):
                 section_lbl.append(QLabel(self.file_specs[addi][2]))
                 cable_lbl.append(QLabel(self.file_specs[addi][3]))
                 addi += 1
-
-            comp_lbl[0].setFont(self.font(20, 20, True))
-            mold_lbl[0].setFont(self.font(20, 20, True))
-            section_lbl[0].setFont(self.font(20, 20, True))
-            cable_lbl[0].setFont(self.font(20, 20, True))
+            for amount in range(len(comp_lbl)):
+                if amount == 0:#titles
+                    comp_lbl[amount].setFont(self.font(20, 20, True))
+                    mold_lbl[amount].setFont(self.font(20, 20, True))
+                    section_lbl[amount].setFont(self.font(20, 20, True))
+                    cable_lbl[amount].setFont(self.font(20, 20, True))
+                else:
+                    comp_lbl[amount].setFont(self.font(15, 10, True))
+                    mold_lbl[amount].setFont(self.font(15, 10, True))
+                    section_lbl[amount].setFont(self.font(15, 10, True))
+                    cable_lbl[amount].setFont(self.font(15, 10, True))
 
             self.frame_group = QGroupBox()
             frame_grid = QGridLayout()
@@ -1060,10 +1069,9 @@ class MainUtility(QMainWindow):
                 self.prep_information()
 
     def grid(self, frame, boxNum):
-
-        component = QLabel("Component")
-        mold = QLabel("Mold")
-        section = QLabel("Section")
+        component = QLabel("Component |")
+        mold = QLabel("Mold |")
+        section = QLabel("Section |")
         cable = QLabel("Cable Type")
 
         component.setFont(self.font(20, 20, True))
@@ -1092,7 +1100,7 @@ class MainUtility(QMainWindow):
 
     def font(self, ptSize, weigth, bold):
         font = QtGui.QFont()
-        font.setFamily("System")
+        font.setFamily("Times New Roman")#System
         font.setPointSize(ptSize)
         font.setBold(bold)
         font.setWeight(weigth)
