@@ -8,6 +8,7 @@ import serial
 import Test_Utility
 import Calibration_Utility as cal
 import Factory_Serial_Manager as fsm
+import csv_shortcut_loader as continuation
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QSettings, Qt, QThread
 from PyQt5.QtGui import QFont
@@ -87,8 +88,9 @@ class Main_Utility(QMainWindow):
         self.help_menu.addAction(self.aboutqt)
 
         #signals form serial manager
-        # self.sm.data_ready.connect(self.buffer)
-        # self.sm.call_func.connect(self.sm.pcba_sensor)
+        self.sm.data_ready.connect(self.buffer)
+        self.sm.call_func.connect(self.sm.pcba_sensor)
+        self.sm.switch_sig.connect(self.switch_btn)
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
 
         #variables
@@ -200,14 +202,21 @@ class Main_Utility(QMainWindow):
         self.title_text.setText("Cable Factory APP II")
         self.title_text.setFont(self.font(45, 20, True))
 
+        # return btn
+        self.return_btn = self.get_Button(b_x=0, b_y=780, length=200, height=75, name="Return", name_ptSize=20,
+                                          name_wight=75)
+
+        self.manufacture_btn = self.get_Button(embedded=self.main_scroll_window, b_x=400, name="Manufacture",
+                                               name_ptSize=17, enabled=True)
+        self.manufacture_btn.clicked.connect(self.buildScreen)
+
+        self.calibrate_btn = self.get_Button(embedded=self.main_scroll_window, b_x=655, name="Calibrate", enabled=False)
+        # self.calibrate_btn.clicked.connect(self.calibrateScreen)
+
         self.test_btn = self.get_Button(embedded=self.main_scroll_window,name="Test")
         self.test_btn.clicked.connect(self.testScreen)
 
-        self.calibrate_btn = self.get_Button(embedded=self.main_scroll_window,b_x=655,name="Calibrate",enabled=False)
-        # self.calibrate_btn.clicked.connect(self.calibrateScreen)
 
-        self.manufacture_btn = self.get_Button(embedded=self.main_scroll_window,b_x=400,name="Manufacture",name_ptSize=17)
-        self.manufacture_btn.clicked.connect(self.buildScreen)
 
         self.scrollArea.setWidget(self.main_scroll_window)
         self.gridLayout.addWidget(self.scrollArea, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -227,7 +236,6 @@ class Main_Utility(QMainWindow):
         self.pcba_groupBox.setFlat(True)
         self.pcba_groupBox.setLayout(self.pcba_gridlayout)
 
-
     # Main Screen Button Methods
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
@@ -236,30 +244,36 @@ class Main_Utility(QMainWindow):
         self.tab_window_gridLayout = QtWidgets.QGridLayout(self.build_central_widget)
         self.four_tab_window = QtWidgets.QTabWidget(self.build_central_widget)
 
-        self.tab_window_gridLayout.addWidget(self.four_tab_window, 0, 0)
-        self.tab_window_gridLayout.addWidget(self.mainBuild_scrollArea, 0, 0)
+        self.tab_window_gridLayout.addWidget(self.four_tab_window, 0, 0,4,4)
+        self.tab_window_gridLayout.addWidget(self.mainBuild_scrollArea, 0, 0,4,4)
         self.main_central_widget.setLayout(self.tab_window_gridLayout)
+
+        # return btn placement
+        self.tab_window_gridLayout.addWidget(self.return_btn, 5, 0, 5, 2)
+        self.tab_window_gridLayout.setColumnStretch(2, 1)
+        self.tab_window_gridLayout.setRowStretch(2, 1)
+        self.return_btn.clicked.connect(self.reset_application)#we might not need to reset it .
 
         # prep tab
         self.prep_tab = QtWidgets.QWidget()
-
         self.prep_gridLayout = QtWidgets.QGridLayout()
         self.prep_gridLayout.setSpacing(10)
 
         self.prep_scrollArea = self.get_ScrollArea()
 
         #prep btn
-        self.file_btn = self.get_Button(b_x=10,b_y=10,length=110,height=75,name="Select File")
+        self.file_btn = self.get_Button(b_x=10,b_y=10,length=110,height=75,name="Select File",name_ptSize=20,name_wight=20,name_bold=True)
         self.file_btn.clicked.connect(self.prep_information)
 
         self.prep_gridLayout.addWidget(self.file_btn, 0, 0)
         self.prep_gridLayout.addWidget(self.prep_scrollArea, 2, 1, 7, 7)
+        self.prep_gridLayout.setRowStretch(8,0)
+        self.prep_gridLayout.setColumnStretch(8,0)
         self.prep_tab.setLayout(self.prep_gridLayout)
 
         # scan tab window
         self.scan_tab = QtWidgets.QWidget()
         self.scan_tab.setEnabled(False)
-
         self.scan_gridLayout = QtWidgets.QGridLayout()
         self.scan_gridLayout.setVerticalSpacing(5)
 
@@ -276,7 +290,11 @@ class Main_Utility(QMainWindow):
         #scan btn
         self.start_btn_frame = self.create_square_frame()
         self.start_button = self.get_Button(embedded=self.start_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Scan",name_wight=20)
-        # self.start_button.clicked.connect(self.start_scan)
+        self.start_button.clicked.connect(self.start_scan)
+        #Stop scan btn
+        self.stop_scan_btn_frame = self.create_square_frame()
+        self.stop_scan_btn = self.get_Button(embedded=self.stop_scan_btn_frame,b_x=0,b_y=0,length=100,height=100,name="STOP",name_wight=20,enabled=False)
+        self.stop_scan_btn.clicked.connect(self.stop_scan)
 
         #sort btn
         self.sort_btn_frame = self.create_square_frame()
@@ -285,7 +303,7 @@ class Main_Utility(QMainWindow):
 
         #replace btn
         self.replace_btn_frame = self.create_square_frame()
-        self.replace_btn = self.get_Button(enabled=self.replace_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Replace\nSensor\nBoard",name_ptSize=15,name_wight=15)
+        self.replace_btn = self.get_Button(embedded= self.replace_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Replace\nSensor\nBoard",name_ptSize=15,name_wight=15)
         # self.replace_btn.clicked.connect(self.boardReplace)
 
         arrow_frame = QtWidgets.QFrame()
@@ -328,9 +346,10 @@ class Main_Utility(QMainWindow):
 
         self.build_scrollArea = self.get_ScrollArea()
 
-        self.powered_test_btn_frame = self.create_square_frame()
-        self.powered_test_btn = self.get_Button(embedded=self.powered_test_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Test\nCable",name_ptSize=15,name_wight=15)
-        self.powered_test_btn.clicked.connect(self.para_pwr_test)
+        #Test cable btn
+        # self.powered_test_btn_frame = self.create_square_frame()
+        self.powered_test_btn = self.get_Button(b_x=0,b_y=0,length=100,height=100,name="Test\nCable",name_ptSize=20,name_wight=20)
+        # self.powered_test_btn.clicked.connect(self.para_pwr_test)
 
         self.build_error_box = self.get_err_display_box()
         self.build_error_box[0].setVisible(False)
@@ -338,16 +357,16 @@ class Main_Utility(QMainWindow):
         self.build_dtc_serial_lbl = QtWidgets.QLabel()
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
-        progressBar_frame = self.create_square_frame()
-        self.progress_bar = self.create_progress_bar(progressBar_frame, 160)
+        # progressBar_frame = self.create_square_frame()
+        self.build_bar = self.create_progress_bar(maximum=160)
         self.progress_bar_counter = 0
 
-        self.build_gridLayout.addWidget(self.powered_test_btn_frame, 0, 0, 2, 2)
-        self.build_gridLayout.addWidget(progressBar_frame, 1, 0, 2, 2)
+        self.build_gridLayout.addWidget(self.powered_test_btn, 1, 0, 1, 1)
+        self.build_gridLayout.addWidget(self.build_bar, 2, 0, 1, 1)
         self.build_gridLayout.addWidget(self.build_dtc_serial_lbl, 0, 10)
         self.build_gridLayout.addWidget(self.build_scrollArea, 1, 1, 11, 11)
         self.build_gridLayout.addWidget(self.build_error_box[0], 12, 1, 2, 11)
-
+        self.build_gridLayout.setColumnStretch(3,1)
         self.build_tab.setLayout(self.build_gridLayout)
 
         self.cable_grid = QGridLayout()
@@ -364,46 +383,39 @@ class Main_Utility(QMainWindow):
         self.program_tab.setLayout(self.program_gridLayout)
         self.prog_err_box_contents = self.get_err_display_box()
         self.prog_err_box_contents[0].setVisible(False)
-        #progress Bar
-        verify_prog_bar_frame = self.create_square_frame()
-        self.verify_button_prog_bar = self.create_progress_bar(verify_prog_bar_frame, 100)
 
-        #cable Verify
-        self.cable_verify_btn_frame = self.create_square_frame()
-        self.cable_verify_btn = self.get_Button(embedded=self.cable_verify_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Cable\nVerify",name_wight=15,name_ptSize=15)
-        self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
+        #Program Buttons
+        self.cable_verify_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="Cable\nVerify",
+                                                name_wight=20, name_ptSize=20)
+        self.eeprom_btn = self.get_Button(b_y=0, b_x=0, length=100, height=100, name="Program\nEEPROM", name_wight=20,
+                                          name_ptSize=20, enabled=False)
+        self.final_test_btn = self.get_Button(b_x=0, b_y=0, height=100, length=100, name="Final Test", name_wight=20,
+                                              name_ptSize=20, enabled=False)
 
-        #EEPROM progbar
-        eeprom_prog_bar_frame = self.create_square_frame()
-        self.eeprom_prog_bar = self.create_progress_bar(eeprom_prog_bar_frame, 100)
+        #connections
+        # self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
+        # self.eeprom_btn.clicked.connect(self.eeprom_call)
+        # self.final_test_btn.clicked.connect(self.csv)
 
-        #eeprom btn
-        self.eeprom_btn_frame = self.create_square_frame()
-        self.eeprom_btn = self.get_Button(embedded=self.eeprom_btn_frame,b_y=0,b_x=0,length=100,height=100,name="Program\nEEPROM",name_wight=15,name_ptSize=15,enabled=False)
-        self.eeprom_btn.clicked.connect(self.eeprom_call)
-
-        #final test prog bar
-        final_test_prog_bar_frame = self.create_square_frame()
-        self.final_test_prog_bar = self.create_progress_bar(final_test_prog_bar_frame, 200)
-
-        #final test btn
-        self.final_test_btn_frame = self.create_square_frame()
-        self.final_test_btn = self.get_Button(embedded=self.final_test_btn_frame,b_x=0,b_y=0,height=100,length=100,name="Final Test",name_wight=15,name_ptSize=15,enabled=False)
-        self.final_test_btn.clicked.connect(self.csv)
+        #progress Bars
+        self.verify_button_prog_bar = self.create_progress_bar(maximum= 100)
+        self.eeprom_prog_bar = self.create_progress_bar(maximum=100)
+        self.final_test_prog_bar = self.create_progress_bar(maximum=200)
 
         self.prog_dtc_serial_lbl = QtWidgets.QLabel()
         self.prog_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
-        self.program_gridLayout.addWidget(self.cable_verify_btn_frame, 0, 0, 2, 2)
-        self.program_gridLayout.addWidget(verify_prog_bar_frame, 1, 0, 2, 2)
-        self.program_gridLayout.addWidget(self.eeprom_btn_frame, 2, 0, 2, 2)
-        self.program_gridLayout.addWidget(eeprom_prog_bar_frame, 3, 0, 2, 2)
-        self.program_gridLayout.addWidget(self.final_test_btn_frame, 4, 0, 2, 2)
-        self.program_gridLayout.addWidget(final_test_prog_bar_frame, 5, 0, 2, 2)
+        self.program_gridLayout.addWidget(self.cable_verify_btn, 1, 0, 2, 1)
+        self.program_gridLayout.addWidget(self.verify_button_prog_bar, 3, 0, 1, 1)
+        self.program_gridLayout.addWidget(self.eeprom_btn, 4, 0, 2, 1)
+        self.program_gridLayout.addWidget(self.eeprom_prog_bar, 6, 0, 1, 1)
+        self.program_gridLayout.addWidget(self.final_test_btn, 7, 0, 2,1)
+        self.program_gridLayout.addWidget(self.final_test_prog_bar, 9, 0, 1, 1)
         self.program_gridLayout.addWidget(self.prog_dtc_serial_lbl, 0, 10)
         self.program_gridLayout.addWidget(self.program_scrollArea, 1, 1, 11, 11)
         self.program_gridLayout.addWidget(self.prog_err_box_contents[0], 12, 1, 2, 11)
-
+        self.program_gridLayout.setRowStretch(10,1)
+        self.program_gridLayout.setColumnStretch(2,1)
         self.sm.wake_up_call()
 
         # inputting of widgets
@@ -422,19 +434,25 @@ class Main_Utility(QMainWindow):
         self.setCentralWidget(self.build_central_widget)
 
     def testScreen(self):
-        test_screen = Test_Utility.test_buildScreen(self.main_central_widget,self.sm)
-        self.setCentralWidget(test_screen)
+        self.test_screen = Test_Utility.test_buildScreen(self.main_central_widget,self.sm,self.return_btn)
+        self.setCentralWidget(self.test_screen)
+        self.test_screen.return_sig.connect(self.close_test)
+
+    def close_test(self):
+        self.test_screen.close()
+        self.initUI()
 
     def calScreen(self):
         # calibrate = cal.SomethingForthekids
         pass
 
     #BuildScreen Button Methods
-    #---prep Tab Methods
+
+    #-Prep Tab Methods
     def prep_information(self):
         """ Grabs the file path for the Select File"""
-        # if self.sm.check_port() is False:
-        #     return
+        if self.sm.check_port() is False:
+            return
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
@@ -477,7 +495,7 @@ class Main_Utility(QMainWindow):
                     self.file_specs.append(self.file_contents[content].split(","))
 
             if self.has_protection_board():
-                self.sensor_num[1] = int(file_desc[2][1]) - 1
+                self.sensor_num[1] = int(file_desc[2][1]) - 1 #takes off the eeprom from the cable and only includes pcb18b20s
             else:
                 self.sensor_num[1] = int(file_desc[2][1])
             # protection/sensor information
@@ -498,18 +516,9 @@ class Main_Utility(QMainWindow):
             self.program_gridLayout.addWidget(pcba_program_display, 0, 1)
 
             desc_lbl = []
-            desc_lbl.append(QLabel(file_desc[0][0]))
-            desc_lbl.append(QLabel(file_desc[0][1]))
-            desc_lbl.append(QLabel(file_desc[1][0]))
-            desc_lbl.append(QLabel(file_desc[1][1]))
-            desc_lbl.append(QLabel(file_desc[2][0]))
-            desc_lbl.append(QLabel(file_desc[2][1]))
-            desc_lbl.append(QLabel(file_desc[3][0]))
-            desc_lbl.append(QLabel(file_desc[3][1]))
-            desc_lbl.append(QLabel(file_desc[4][0]))
-            desc_lbl.append(QLabel(file_desc[4][1]))
-            desc_lbl.append(QLabel(file_desc[5][0]))
-            desc_lbl.append(QLabel(file_desc[5][1]))
+            for desc in range(len(file_desc)):
+                desc_lbl.append(QLabel(file_desc[desc][0]))
+                desc_lbl.append(QLabel(file_desc[desc][1]))
 
             for num in range(len(desc_lbl)):
                 desc_lbl[num].setFont(self.font(15, 20, False))
@@ -614,7 +623,7 @@ class Main_Utility(QMainWindow):
                     frame_3_Grid.addWidget(section_lbl[comp], ran, 4)
                     frame_3_Grid.addWidget(cable_lbl[comp], ran, 6)
                     ran += 1
-                elif comp >= 97 and comp < 127:
+                elif comp >= 97:#if a cable has more than 125 this might need to be changed to a while loop
                     if comp is 97:
                         ran = 1
                     frame_4_Grid.addWidget(comp_lbl[comp], ran, 0)
@@ -655,6 +664,367 @@ class Main_Utility(QMainWindow):
                 # file.close()
                 self.prep_information()
 
+    #-Scan Tab Methods
+    def start_scan(self):
+        self.sm.total_pcba_num = self.sensor_num[1]
+        self.sm.scan_board()
+        self.scan_gridLayout.addWidget(self.start_btn_frame, 0, 0, 2, 2)
+
+    def switch_btn(self):
+        self.scan_gridLayout.addWidget(self.stop_scan_btn_frame, 0, 0, 2, 2)
+        self.stop_scan_btn.setEnabled(True)
+
+    def stop_scan(self):
+        self.sm.stop_scan()
+        self.scan_gridLayout.addWidget(self.start_btn_frame, 0, 0, 2, 2)
+
+    def buffer(self, number, hexadecimal):
+        self.hex_number.append(hexadecimal)
+        self.pcbaImgInfo(number, hexadecimal)
+
+    def pcbaImgInfo(self, num, hexD):
+        stripped_hex = hexD.strip()
+        pcba_frame = QtWidgets.QFrame()
+        pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
+        pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        pcba_frame.setLineWidth(46)
+
+        pcba_image_lbl = QtWidgets.QLabel(pcba_frame)
+        pcba_image_lbl.setGeometry(QtCore.QRect(35, 30, 125, 45))
+        pcba_image_lbl.setPixmap(
+            QtGui.QPixmap(self.current_directory+"\\Pictures\\Sensor_PCBA.jpg"))
+        pcba_image_lbl.setScaledContents(True)
+
+        self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
+        self.hex_number_lbl.setGeometry(QtCore.QRect(15, 77, 180, 16))
+        self.hex_number_lbl.setFont(self.font(18, 18, True))
+
+        without_family_code_id = stripped_hex[:-3]
+        self.unchanged_hex_ids.append(without_family_code_id)
+
+        new_info = stripped_hex.replace(" ", "")
+        temp = int(new_info, 16)
+        self.hex_list.append(new_info)
+        self.pcba_hexList.append(temp)
+
+        self.pcba_frame_Highlight.append(stripped_hex)
+        self.pcba_hexDict[stripped_hex] = self.counter
+        self.hex_lbl_Dict[self.hex_number_lbl] = self.counter
+        self.hex_lbl_list.append(self.hex_number_lbl)
+
+        self.hex_number_lbl.setText(self.hex_number[num - 1])
+
+        pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
+        pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 19))
+        pcba_right_topCorner_id_lbl.setFont(self.font(20, 75, True))
+
+        if self.pcba_counter is 31:
+            self.pcba_counter = 1
+        if num < 31:
+            pcba_right_topCorner_id_lbl.setText("A" + str(num))
+        elif num >= 31 and num < 61:
+            pcba_right_topCorner_id_lbl.setText("B" + str(self.pcba_counter))
+            self.pcba_counter += 1
+        elif num >= 61 and num < 91:
+            pcba_right_topCorner_id_lbl.setText("C" + str(self.pcba_counter))
+            self.pcba_counter += 1
+        elif num >= 91 and num < 121:
+            pcba_right_topCorner_id_lbl.setText("D" + str(self.pcba_counter))
+            self.pcba_counter += 1
+        elif num >= 121 and num < 151:
+            pcba_right_topCorner_id_lbl.setText("E" + str(self.pcba_counter))
+            self.pcba_counter += 1
+
+        self.pcba_orderNum = QLabel(pcba_frame)
+        self.pcba_orderNum.setGeometry(QtCore.QRect(144, 10, 50, 20))
+        self.pcba_orderNum.setFont(self.font(9, 10, True))
+
+        self.pcba_imgs.append(self.pcba_orderNum)
+        self.pcba_frame_Dict[pcba_frame] = self.counter
+
+        self.pcba_print(pcba_frame, self.counter - 1)
+
+    def pcba_print(self, box, increment):
+
+        if increment is self.sensor_num[1] - 1:
+            self.sensor_num[0] = True
+            self.sort_btn.setEnabled(self.sensor_num[0])
+
+        if (increment % 6) is 0:
+            self.colbCount = 0
+            self.rowCount += 1
+        if (self.counter % 30 is 0):
+            line = self.line()
+            self.pcba_gridlayout.addWidget(line, self.rowCount - 2, 0, 7, 7)
+        self.pcba_gridlayout.addWidget(box, self.rowCount, self.colbCount, 2, 2)
+        self.colbCount += 1
+
+        self.scan_scrollArea.setWidget(self.pcba_groupBox)
+
+        self.counter += 1
+
+        if self.counter is self.sensor_num[1] + 1:
+            if self.continuation_flag is False:
+                pop = QMessageBox.information(self, "Done", "Done!")
+                self.temporary_csv()
+                self.start_button.setEnabled(False)
+        else:
+            if self.continuation_flag is False:
+                self.sm.scan_board()
+
+    def left_check(self):
+        self.pcba_current_number -= 1
+        if self.physical_num < self.sensor_num[1] + 2:
+            self.right_arrow_btn.setEnabled(True)
+
+        if self.physical_num is 3:
+            self.left_arrow_btn.setEnabled(False)
+
+        if self.physical_num is not 1:
+            self.highlight(self.physical_num, False)
+
+    def right_check(self):
+        self.pcba_current_number += 1
+        if self.physical_num > 1:
+            self.left_arrow_btn.setEnabled(True)
+            # locks button if it reaches the end
+        if self.physical_num is self.sensor_num[1]:
+            self.right_arrow_btn.setEnabled(False)
+
+        if self.physical_num is not self.sensor_num[1] + 1:
+            self.highlight(self.physical_num, True)
+
+    def highlight(self, nextNum, rightClick):
+
+        self.current_pcba.setText(str(self.pcba_current_number) + " out of " + str(self.sensor_num[1]))
+
+        if (rightClick):
+
+            for key in self.pcba_frame_Dict:
+                if nextNum is self.pcba_frame_Dict.get(key):
+                    key.setAutoFillBackground(True)
+                    key.setPalette(self.palette(255, 139, 119))
+                    if key is not self.pcba_memory:
+                        self.pcba_memory.append(key)
+
+            if nextNum > 1:
+                self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
+
+            self.physical_num += 1
+        else:  # left click
+            self.pcba_memory[nextNum - 2].setAutoFillBackground(False)
+            self.pcba_memory[nextNum - 3].setAutoFillBackground(True)
+            self.pcba_memory.pop()
+            self.physical_num -= 1
+    #-Build Tab Methods
+    def para_pwr_test(self):
+        pass
+        # self.parasidic_and_power_test(build_test = True,progress_bar=self.progress_bar)
+
+    def parasidic_and_power_test(self,build_test = True,final_test = False,progress_bar = None):
+        self.update_progress_bar(reset = True,progress_bar=progress_bar)
+        self.power_end = tuple()
+        protection_board = self.has_protection_board()
+        self.error_messages.clear()
+        err_box = self.get_err_display_box()
+        self.pass_flag = False
+        if build_test is True:
+            self.build_error_box[0].setVisible(False)
+            self.build_error_box[1].addWidget(err_box[0])
+            self.update_progress_bar(10,progress_bar)
+
+        else:
+            self.prog_err_box_contents[0].setVisible(False)
+            self.prog_err_box_contents[1].addWidget(err_box[0])
+            self.verify_error_tuple = tuple()
+
+        self.power_end = self.sm.Test_Cable(self.sensor_num[1], self.final_physical_order, progress_bar,
+                                                self.progress_bar_counter, protection_board,build_test = build_test)#you might need to create a signal that sends the value of the progress bar counter back
+
+        if self.power_end == -1:
+            return
+
+        #power test result
+        if self.power_end is None:
+            self.update_progress_bar(140,progress_bar)
+            self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False),err_box,build_test)
+            return
+        self.progress_bar_counter = self.power_end[-1]
+        if self.power_end[2] is False:
+            if isinstance(self.power_end[1], str):  # Exit 2
+                self.update_progress_bar(45,progress_bar)
+                self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+
+            elif len(self.power_end[1]) >= 1:  # EXIT 1
+                self.update_progress_bar(45,progress_bar)
+                self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+
+        elif build_test is False and self.power_end[2] is True:#Both program and final test enter here if they pass power test
+            self.update_progress_bar(45,progress_bar)
+            self.pass_flag = True
+            self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+            if final_test is False and self.successfully_programmed_eeprom_flag is False:
+                self.eeprom_btn.setEnabled(True)
+        #para test result for build test
+        elif isinstance(self.power_end[4], str) and self.power_end[-2] == False:
+            self.update_progress_bar(150,progress_bar)
+            self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+
+        elif self.power_end[2] is True and self.power_end[5] is True:#Both pass Test
+            self.pass_flag = True
+            self.update_progress_bar(10,progress_bar)
+            self.print_pwr_para_test_result(self.power_end,err_box,build_test)
+            if build_test is False and final_test is False and self.successfully_programmed_eeprom_flag is False:
+                self.eeprom_btn.setEnabled(True)
+
+        else:
+            self.update_progress_bar(10,progress_bar)
+            self.final_powr_tuple = self.power_end
+
+        self.update_progress_bar(10,progress_bar)
+        if self.pass_flag is True and final_test is False:
+            self.program_tab.setEnabled(True)
+
+        #temperature display
+        if self.power_end[2] is True and self.power_end[-2] is True:
+            self.update_progress_bar(10,progress_bar)
+            temps = self.sm.get_temps()
+            hex = self.sm.get_hex_ids()
+            self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
+        else:
+            self.update_progress_bar(10,progress_bar)
+            temps = self.sm.get_temps()#check if
+            hex = self.sm.get_hex_ids()
+            self.update_temperatures(temps,hex,build_test,self.sensor_num[1]+1)
+            self.update_progress_bar(10,progress_bar)
+        if build_test:
+            progress_bar.setValue(160)#default will allways make it end at 100%
+        elif final_test is True:
+            print("final_test counter value: ",self.progress_bar_counter)
+            progress_bar.setValue(100)
+        else:
+            progress_bar.setValue(100)
+
+    def OneWireSort(self):
+        if self.report_fail_flag and self.continuation_flag is False:
+            inform = QMessageBox.warning(self,"failed save temp","Sensors failed to save into a temporary file\n Would you like to re-try?",QMessageBox.Yes|QMessageBox.No)
+            if inform == QMessageBox.Yes:
+                self.temporary_csv()
+                self.OneWireSort()
+            else:
+                self.report_fail_flag = False
+                self.OneWireSort()
+        else:
+            if self.continuation_flag is False:
+                if self.pressed_flag is True:
+                    call = QMessageBox.information(self, "Sort Button",
+                                                   "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
+                                                   QMessageBox.Yes | QMessageBox.No)
+
+                    if call == QMessageBox.Yes:
+                        self.yesButton()
+                        self.lsb = -1
+                        self.final_order.clear()
+                        self.order_dict.clear()
+                        self.physical_num = 1
+
+            self.pressed_flag = True
+
+        zero_list = []
+        one_list = []
+        bin_hex_list = []
+
+        for hex in self.pcba_hexList:
+            bin_hex_list.append(bin(hex))
+
+        # split hex list into zeros and ones
+        for binary in bin_hex_list:
+            if binary[self.lsb] is "0":
+                zero_list.append(binary)
+            else:
+                one_list.append(binary)
+
+        zList = len(zero_list)
+        self.Halfsies(zero_list, 1, len(zero_list))
+        self.Halfsies(one_list, zList + 1, len(one_list))
+
+        count = 0
+        # this for loop creates a dictionary with binary as key and number as value
+        for b in bin_hex_list:
+            self.final_order[b] = str(count)
+            count += 1
+
+        key_count = 0
+
+        for order in self.final_order:  # order grabs the binary string
+            for place in self.order_dict:  # place grabs the physical location
+                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
+                    self.final_order[order] = place
+                    self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
+                    key_count += 1
+
+        run = 0
+        next = 0
+        # this nested loop updates the pcba frame with its physical order
+        for key in self.final_order:
+            for frame in self.pcba_frame_Dict:
+                if run is next:
+                    self.pcba_frame_Dict[frame] = self.final_order[key]
+                run += 1
+            run = 0
+            next += 1
+
+        c = 0
+        for phys_num in self.final_order:  # this loop puts that number as a label to the frame box of pcba's
+            self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
+            c += 1
+
+        # this bottom loop puts the final order according to its hex so that I may use it for error checking during the parasidic and pwr test
+        count = 0
+        for run in self.final_order:
+            self.final_physical_order[self.hex_list[count]] = self.final_order[run]
+            count += 1
+
+        for key in self.final_physical_order:
+            self.total_sensor_ids.append(key)
+
+        self.file_btn.setEnabled(False)
+        self.right_arrow_btn.setEnabled(True)
+        self.highlight(self.physical_num, True)
+        self.sort_btn.setEnabled(False)
+        self.buildDisplay()
+        self.final_order.clear()
+        self.build_tab.setEnabled(True)
+
+    def Halfsies(self, list, key, size):
+        '''This method sorts and puts the given list into the self.order_dict dictionary'''
+        count = 1
+        last = -2
+        k = key
+
+        for run in range(size):
+            hold = list[0]
+            while count < len(list):
+                if hold[last] < list[count][last]:
+                    count += 1
+                    last = -2
+
+                elif hold[last] is list[count][last]:
+                    last -= 1
+
+                elif hold[last] > list[count][last]:
+                    first_index = list.index(hold)
+                    hold = list[count]
+                    list[first_index], list[count] = list[count], list[first_index]
+                    last = -2
+                    count = 1
+            self.order_dict[k] = hold  # this will put the least on top
+            k += 1
+            count = 1
+            list.remove(hold)
+
+    #Program Tab Methods
+
     #Utility Functions
     def font(self, ptSize, weigth, bold):
         font = QtGui.QFont()
@@ -663,6 +1033,21 @@ class Main_Utility(QMainWindow):
         font.setBold(bold)
         font.setWeight(weigth)
         return font
+
+    def line(self):
+        line = QtWidgets.QFrame()
+        line.setGeometry(QtCore.QRect(10, 350, 781, 16))
+
+        palette = QtGui.QPalette()
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Mid, brush)
+
+        line.setPalette(palette)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        line.setMidLineWidth(20)
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        return line
 
     def get_ScrollArea(self,resizable = True,embedded =None):
         if embedded == None:
@@ -689,8 +1074,43 @@ class Main_Utility(QMainWindow):
         button.setEnabled(enabled)
         return button
 
-    def create_square_frame(self,x=0, y=0, length=200, height=200):
-        frame = QtWidgets.QFrame()
+    def grid(self, frame, boxNum):
+
+        component = QLabel("Component")
+        mold = QLabel("Mold")
+        section = QLabel("Section")
+        cable = QLabel("Cable Type")
+
+        component.setFont(self.font(20, 20, True))
+        mold.setFont(self.font(20, 20, True))
+        section.setFont(self.font(20, 20, True))
+        cable.setFont(self.font(20, 20, True))
+
+        frame_grid = QGridLayout()
+        frame_grid.setVerticalSpacing(0)
+        frame_grid.setHorizontalSpacing(1)
+        frame_grid.addWidget(component, 0, 0)
+        frame_grid.addWidget(mold, 0, 2)
+        frame_grid.addWidget(section, 0, 4)
+        frame_grid.addWidget(cable, 0, 6)
+        frame_grid.setRowStretch(35, 1)
+
+        if boxNum is 1:
+            line = QtWidgets.QFrame(frame)
+            line.setWindowModality(QtCore.Qt.NonModal)
+            line.setGeometry(QtCore.QRect(-7, 0, 10, 1250))
+            line.setFrameShadow(QtWidgets.QFrame.Plain)
+            line.setLineWidth(5)
+            line.setFrameShape(QtWidgets.QFrame.VLine)
+
+        return frame_grid
+
+    def create_square_frame(self,embedded = None,x=0, y=0, length=200, height=200):
+        if embedded == None:
+            frame = QtWidgets.QFrame()
+        else:
+            frame = QtWidgets.QFrame(embedded)
+
         frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         frame.setFrameShadow(QtWidgets.QFrame.Raised)
         frame.setGeometry(QtCore.QRect(x, y, height, length))
@@ -713,12 +1133,113 @@ class Main_Utility(QMainWindow):
         lbl.setGeometry(QtCore.QRect(g_x, g_y, g_length, g_height))
         return lbl
 
-    def create_progress_bar(self, frame, maximum):
-        prog_bar = QtWidgets.QProgressBar(frame)
+    def create_progress_bar(self, frame = None, maximum = 100):
+        if frame == None:
+            prog_bar = QtWidgets.QProgressBar()
+        else:
+            prog_bar = QtWidgets.QProgressBar(frame)
+
         prog_bar.setGeometry(0, 40, 100, 20)
         prog_bar.setMinimum(0)
         prog_bar.setMaximum(maximum)
         return prog_bar
+
+    def update_progress_bar(self,amount = 0,progress_bar = None,reset = False):
+        if reset is True:
+            self.progress_bar_counter =0
+            progress_bar.setValue(0)
+        else:
+            self.progress_bar_counter += amount
+            progress_bar.setValue(self.progress_bar_counter)
+
+    def has_protection_board(self):
+        protection_board = self.file_specs[3][0]
+        pb = protection_board[:10]
+        if pb == 'Protection':
+            return True
+        else:
+            return False
+
+    def get_file_specifications(self):
+        return self.contents_list[7:]
+
+    def get_err_display_box(self):
+        display_box_contents = list()
+
+        internal_box_frame = self.create_square_frame(x=0,y= 0,length= 600,height= 600)  # make box highlight red
+        internal_box_frame.setAutoFillBackground(True)
+        internal_frame_grid =QGridLayout()
+        internal_box_frame.setLayout(internal_frame_grid)
+
+        scroll_grid = QGridLayout()
+        scroll_grid.setSpacing(20)
+
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setLayout(scroll_grid)
+
+        internal_frame_grid.addWidget(scroll_area,0,0)
+
+        display_box_contents.append(internal_box_frame)
+        display_box_contents.append(scroll_grid)
+        display_box_contents.append(scroll_area)
+        display_box_contents.append(internal_frame_grid)
+
+        return display_box_contents
+
+    def get_description_contents(self):
+        return self.contents_list[1:7]
+
+    def continuation_of_previously_scanned(self):
+        cont = continuation.Continuation(self.file_contents)
+        return cont
+
+
+    def temporary_csv(self):
+        try:
+            hexlist = self.unchanged_hex_ids.copy()
+            date = self.sm.get_date(True)
+
+            if self.report_dir is "":
+                pathway = QMessageBox.warning(self, "Select Path", "Please select a directory to load your temporary csv document",
+                                              QMessageBox.Ok)
+                if pathway == QMessageBox.Ok:
+                    self.set_report_location()
+            n = 0
+            for detail in self.file_specs:
+                self.file_specs[n][-1] = detail[-1].replace("\n", "")
+                n += 1
+
+            final_list = self.file_description + self.file_specs
+            x = 0
+            h = 0
+            with open(self.report_dir + "/DTC-" + final_list[0][1] + "_Sort_"+date+".csv", 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Description","Sort",date])
+                for _ in final_list:
+                    if x is 0:
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2]])
+                    elif x is 6:
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "sensor id"])
+                    elif x > 9:
+                        if h >= len(hexlist):
+                            hexlist.append(" ")
+                        writer.writerow(
+                            [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], hexlist[h]])
+                        h += 1
+                    else:
+                        writer.writerow([final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "-"])
+                    x += 1
+            self.report_fail_flag = False
+
+        except:
+            show= QMessageBox.information(self,"failed to Save Temp file","There was an error trying to save the temp file")
+            self.report_fail_flag = True
 
     #file setting Modules
     def configuration(self):
@@ -926,6 +1447,38 @@ class Main_Utility(QMainWindow):
         """Close the settings widget without applying changes."""
         self.settings_widget.close()
 
+    def get_connector_type(self):
+        connector = self.file_specs[1][0]
+        type = connector[6:]
+        if type == "Bare Leads":
+            self.connector_type = self.connector_image_type[0]
+        elif type == "XLR":
+            self.connector_type = self.connector_image_type[1]
+        elif type == "Lemo Connector":
+            self.connector_type = self.connector_image_type[2]
+
+    def has_RA_mold(self):
+        for mold in self.file_specs:
+            if mold[1] == "RA mold":
+                return True
+        return False
+
+    def get_length_of_sensors(self):
+        self.sensor_length= list()
+        for length in range(1,len(self.file_specs)):
+            self.sensor_length.append(self.file_specs[length][2])
+
+    def get_RA_mold(self):
+        self.ra_mold = dict()
+        counter = 0
+        for mold in self.file_specs:
+            if mold[1] == "RA mold" and counter >= 3:
+                self.ra_mold[mold[0][-1]] = True
+            elif counter >= 3:
+                self.ra_mold[mold[0][-1]] = False
+            counter += 1
+
+
     #port configuration Modules
     def populate_ports(self):
         """Doc string goes here."""
@@ -984,6 +1537,71 @@ class Main_Utility(QMainWindow):
         if hasattr(sys, '_MEIPASS'):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
+
+    def reset_application(self):
+        """Resetting variables from the init func"""
+        self.update_progress_bar(amount=20, progress_bar=self.final_test_prog_bar)
+        self.file_btn.setEnabled(True)
+        # self.hex_number_lbl.clear()
+        self.pcba_hexList.clear()
+        # self.hex_list.clear()
+        # self.pcba_frame_Highlight.clear()
+        # self.hex_lbl_Dict.clear()
+        # self.pcba_hexDict.clear()
+        # self.hex_lbl_list.clear()
+        # self.pcba_counter = 1
+        # # self.file_contents.clear()
+        # self.file_specs.clear()
+        # self.sensor_num = [False, 0]
+        # self.file_description.clear()
+        # self.colbCount = 0
+        # self.rowCount = 0
+        # self.pcba_frame_Dict.clear()
+        # self.unchanged_hex_ids.clear()
+        # self.pcba_memory.clear()
+        # self.physical_num = 1
+        # self.lsb = -1
+        # self.counter = 1
+        # self.final_order.clear()
+        # self.order_dict.clear()
+        # self.pcba_imgs.clear()
+        # self.file_dict.clear()
+        # self.file_bool = False
+        # self.pressed_flag = False
+        # self.desc_group.deleteLater()
+        # self.pcba_groupBox.deleteLater()
+        # self.frame_group.deleteLater()
+        self.scan_tab.setEnabled(False)
+        self.build_tab.setEnabled(False)
+        # self.total_sensor_ids.clear()
+        self.program_tab.setEnabled(False)
+        self.report_dir = ""
+        # self.hex_number.clear()
+        # self.pcba_current_number = 1
+        # self.error_num = 0
+        # self.path_check = False
+        # self.program_eeprom_flag = False
+        # self.scan_finished = False
+        # self.success_print.clear()
+        # self.build_live_temperature_list.clear()
+        # self.final_physical_order.clear()
+        # self.program_live_temperature_list.clear()
+        # self.before.clear()
+        # self.error_messages.clear()
+        # self.wrong_sensors_found_list.clear()
+        # self.successfully_programmed_eeprom_flag = False
+        # # self.settings.setValue("report_file_path", "/path/to/report/folder")
+        # ee = list(self.eeprom)
+        # ee.clear()
+        # self.eeprom = tuple(ee)
+        self.sm.reset_variables()
+        self.update_progress_bar(reset=True, progress_bar=self.final_test_prog_bar)
+        self.sm.close_port()
+        self.settings.setValue("configuration_file_path", "/path/to/report/folder/file")
+        self.settings.setValue("MetaData_file_path", "/path/to/report/folder/file")
+        self.settings.setValue("Sensor_Positions_file_path", "/path/to/report/folder/file")
+        self.settings.setValue("Final_Report_Directory", "/path/to/directory")
+        self.initUI()
 
 def showscreen():
     app = QApplication([])
