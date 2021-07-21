@@ -13,7 +13,8 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QFileDialog,QProgressBar
 class SerialManager(QObject):
     """Class that handles the serial connection."""
     data_ready = pyqtSignal(int, str)
-    switch_sig = pyqtSignal()
+    switch_sig = pyqtSignal(bool)
+    clean_scan_page = pyqtSignal()
     no_port_sel = pyqtSignal()
     sleep_finished = pyqtSignal()
     port_unavailable_signal = pyqtSignal()
@@ -36,6 +37,7 @@ class SerialManager(QObject):
         self.counter = 0  # this counter is not the same as the views file but it does share the same value by -1
         self.new_Bool = False
         self.scan_flag = True
+        self.scan_reactivation_flag = False
         self.program_eeprom_flag = False
         self.page_dialog = QDialog()
         self.check = False
@@ -64,11 +66,20 @@ class SerialManager(QObject):
             return dt.strftime("%m-%d-%y")
         else:
             return dt.strftime("%m%d%y")
-    #Port Functions
+
     @pyqtSlot()
     def scan_board(self):
         if self.ser.is_open:
             try:
+                if self.scan_reactivation_flag:
+                    result = QMessageBox.information(self.page_dialog,"Wish to Continue","Wish to clean Sensors?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
+                    if result == QMessageBox.Yes:
+                        self.reset_scan_page()
+                        self.scan_reactivation_flag = False
+                    else:
+                        self.scan_reactivation_flag = False
+                if self.scan_flag == False:
+                    self.toggle_scan_flag()
                 self.flush_buffers()
                 self.call_func.emit()
 
@@ -81,9 +92,7 @@ class SerialManager(QObject):
                                           " Please connect the serial port in the tab above")
     @pyqtSlot()
     def pcba_sensor(self):
-
         if self.ser.is_open:
-            self.switch_sig.emit()
             try:
                 while self.scan_flag:
                     self.ser.write("temps 2\r\n".encode())
@@ -104,7 +113,8 @@ class SerialManager(QObject):
                             self.hex_list.append(hex_number)
                             self.data_ready.emit(self.counter, hex_number)
                             if self.counter is self.total_pcba_num:
-                                break
+                                self.scan_flag = False
+                                return
                     elif "ERROR" in data:
                         time.sleep(1)
                         self.flush_buffers()
@@ -121,10 +131,26 @@ class SerialManager(QObject):
                 self.page_dialog.close()
             return -1
 
+    def reset_scan_page(self):
+        try:
+            self.hex_list.clear()
+            self.counter = 0
+            self.clean_scan_page.emit()
+        except:
+            QMessageBox.critical(self.page_dialog,"Failed","Failed to clean page")
+
     def stop_scan(self):
         result = QMessageBox.information(self.page_dialog,"Scan Stopped","Wish to Cancel?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
         if result == QMessageBox.Yes:
+            self.scan_reactivation_flag = True
+            self.switch_sig.emit(True)
             self.scan_flag = False
+
+    def toggle_scan_flag(self):
+        if self.scan_flag:
+            self.scan_flag = False
+        else:
+            self.scan_flag = True
 
     def flush_buffers(self):
         """Flushes the serial buffer by writing to the buffer and then reading
@@ -133,6 +159,7 @@ class SerialManager(QObject):
         time.sleep(0.5)
         self.ser.read(self.ser.in_waiting)
 
+    # Port Functions
     def wake_up_call(self):
         '''this call keeps the board on and turns off the sleep mode, if desired to sleep either turrn this mode off
          or directly call it to sleep'''
@@ -198,3 +225,5 @@ class SerialManager(QObject):
         self.hex_memory.clear()
         self.eeprom = str()
         self.total_pcba_num = 0
+        self.scan_flag = True
+        self.scan_reactivation_flag = False

@@ -2,8 +2,6 @@ import csv
 import os
 import re
 import sys
-import time
-import serial
 # import Continuation
 import Test_Utility
 import Calibration_Utility as cal
@@ -91,6 +89,7 @@ class Main_Utility(QMainWindow):
         self.sm.data_ready.connect(self.buffer)
         self.sm.call_func.connect(self.sm.pcba_sensor)
         self.sm.switch_sig.connect(self.switch_btn)
+        self.sm.clean_scan_page.connect(self.clean_scrollArea)
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
 
         #variables
@@ -216,8 +215,6 @@ class Main_Utility(QMainWindow):
         self.test_btn = self.get_Button(embedded=self.main_scroll_window,name="Test")
         self.test_btn.clicked.connect(self.testScreen)
 
-
-
         self.scrollArea.setWidget(self.main_scroll_window)
         self.gridLayout.addWidget(self.scrollArea, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
         self.setCentralWidget(self.scrollArea)
@@ -288,22 +285,23 @@ class Main_Utility(QMainWindow):
         self.dtc_serial_lbl.setFont(self.font(20, 20, True))
 
         #scan btn
-        self.start_btn_frame = self.create_square_frame()
-        self.start_button = self.get_Button(embedded=self.start_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Scan",name_wight=20)
+        # self.start_btn_frame = self.create_square_frame()
+        self.start_button = self.get_Button(b_x=0,b_y=0,length=100,height=100,name="\nScan\n",name_ptSize=20,name_wight=20)
         self.start_button.clicked.connect(self.start_scan)
         #Stop scan btn
-        self.stop_scan_btn_frame = self.create_square_frame()
-        self.stop_scan_btn = self.get_Button(embedded=self.stop_scan_btn_frame,b_x=0,b_y=0,length=100,height=100,name="STOP",name_wight=20,enabled=False)
+        # self.stop_scan_btn_frame = self.create_square_frame()
+        self.stop_scan_btn = self.get_Button(b_x=0,b_y=0,length=100,height=100,name="\nSTOP\n",name_ptSize=20,name_wight=20,enabled=False)
+        self.stop_scan_btn.setVisible(False)
         self.stop_scan_btn.clicked.connect(self.stop_scan)
 
         #sort btn
-        self.sort_btn_frame = self.create_square_frame()
-        self.sort_btn = self.get_Button(embedded=self.sort_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Sort",name_wight=20,enabled=self.sensor_num[0])
+        # self.sort_btn_frame = self.create_square_frame()
+        self.sort_btn = self.get_Button(b_x=0,b_y=0,length=100,height=100,name="\nSort\n",name_ptSize=20,name_wight=20,enabled=self.sensor_num[0])
         # self.sort_btn.clicked.connect(self.OneWireSort)
 
         #replace btn
-        self.replace_btn_frame = self.create_square_frame()
-        self.replace_btn = self.get_Button(embedded= self.replace_btn_frame,b_x=0,b_y=0,length=100,height=100,name="Replace\nSensor\nBoard",name_ptSize=15,name_wight=15)
+        # self.replace_btn_frame = self.create_square_frame()
+        self.replace_btn = self.get_Button(b_x=0,b_y=0,length=100,height=100,name="Replace\nSensor\nBoard",name_ptSize=20,name_wight=20)
         # self.replace_btn.clicked.connect(self.boardReplace)
 
         arrow_frame = QtWidgets.QFrame()
@@ -317,26 +315,28 @@ class Main_Utility(QMainWindow):
 
         self.left_arrow_btn = QtWidgets.QPushButton()
         self.left_arrow_btn.setIcon(left_arrow_icon)
-        self.left_arrow_btn.setIconSize(QtCore.QSize(25, 20))
+        self.left_arrow_btn.setIconSize(QtCore.QSize(55, 50))
         self.left_arrow_btn.clicked.connect(self.left_check)
         self.left_arrow_btn.setEnabled(False)
 
         self.right_arrow_btn = QtWidgets.QPushButton()
         self.right_arrow_btn.setIcon(right_arrow_icon)
-        self.right_arrow_btn.setIconSize(QtCore.QSize(25, 20))
+        self.right_arrow_btn.setIconSize(QtCore.QSize(55, 50))
         self.right_arrow_btn.clicked.connect(self.right_check)
         self.right_arrow_btn.setEnabled(False)
 
         arrow_grid.addWidget(self.left_arrow_btn, 0, 0)
         arrow_grid.addWidget(self.right_arrow_btn, 0, 1)
 
-        self.scan_gridLayout.addWidget(self.start_btn_frame, 0, 0, 2, 2)
-        self.scan_gridLayout.addWidget(self.sort_btn_frame, 2, 0, 2, 2)
-        self.scan_gridLayout.addWidget(self.replace_btn_frame, 4, 0, 2, 2)
+        self.scan_gridLayout.addWidget(self.start_button, 1, 0, 2, 1)
+        self.scan_gridLayout.addWidget(self.stop_scan_btn,1,0,2,1)
+        self.scan_gridLayout.addWidget(self.sort_btn, 3, 0, 2, 1)
+        self.scan_gridLayout.addWidget(self.replace_btn, 5, 0, 2, 1)
         self.scan_gridLayout.addWidget(self.current_pcba, 0, 6)
         self.scan_gridLayout.addWidget(self.dtc_serial_lbl, 0, 10)
-        self.scan_gridLayout.addWidget(arrow_frame, 6, 0)
-
+        self.scan_gridLayout.addWidget(arrow_frame, 7, 0)
+        self.scan_gridLayout.setColumnStretch(3,1)
+        self.scan_gridLayout.setRowStretch(8,1)
         self.scan_tab.setLayout(self.scan_gridLayout)
 
         # build tab
@@ -451,13 +451,13 @@ class Main_Utility(QMainWindow):
     #-Prep Tab Methods
     def prep_information(self):
         """ Grabs the file path for the Select File"""
-        if self.sm.check_port() is False:
+        if self.sm.check_port() == False:
             return
 
         try:
             select_file = QFileDialog.getOpenFileName(self, "open file", "C:/",
                                                       "Excel (*.csv *.xlsx *.tsv)")
-            if (select_file[0] is ''):
+            if (select_file[0] == ''):
                 return
             else:
                 get_directory_tuple = select_file[0].rindex('/')
@@ -608,7 +608,7 @@ class Main_Utility(QMainWindow):
                     frame_1_Grid.addWidget(cable_lbl[comp], ran, 6)
                     ran += 1
                 elif comp >= 33 and comp < 65:
-                    if comp is 33:
+                    if comp == 33:
                         ran = 1
                     frame_2_Grid.addWidget(comp_lbl[comp], ran, 0)
                     frame_2_Grid.addWidget(mold_lbl[comp], ran, 2)
@@ -616,7 +616,7 @@ class Main_Utility(QMainWindow):
                     frame_2_Grid.addWidget(cable_lbl[comp], ran, 6)
                     ran += 1
                 elif comp >= 65 and comp < 97:
-                    if comp is 65:
+                    if comp == 65:
                         ran = 1
                     frame_3_Grid.addWidget(comp_lbl[comp], ran, 0)
                     frame_3_Grid.addWidget(mold_lbl[comp], ran, 2)
@@ -624,7 +624,7 @@ class Main_Utility(QMainWindow):
                     frame_3_Grid.addWidget(cable_lbl[comp], ran, 6)
                     ran += 1
                 elif comp >= 97:#if a cable has more than 125 this might need to be changed to a while loop
-                    if comp is 97:
+                    if comp == 97:
                         ran = 1
                     frame_4_Grid.addWidget(comp_lbl[comp], ran, 0)
                     frame_4_Grid.addWidget(mold_lbl[comp], ran, 2)
@@ -666,17 +666,31 @@ class Main_Utility(QMainWindow):
 
     #-Scan Tab Methods
     def start_scan(self):
-        self.sm.total_pcba_num = self.sensor_num[1]
-        self.sm.scan_board()
-        self.scan_gridLayout.addWidget(self.start_btn_frame, 0, 0, 2, 2)
+        try:
+            self.switch_btn(False)
+            self.sm.total_pcba_num = self.sensor_num[1]
+            self.sm.scan_board()
+            self.start_button.setVisible(False)
+        except:
+            self.switch_btn(True)
 
-    def switch_btn(self):
-        self.scan_gridLayout.addWidget(self.stop_scan_btn_frame, 0, 0, 2, 2)
-        self.stop_scan_btn.setEnabled(True)
+
+    def switch_btn(self,reset):
+        if reset:
+            self.return_btn.setEnabled(True)
+            self.stop_scan_btn.setVisible(False)
+            self.start_button.setVisible(True)
+        elif reset == False:
+            self.return_btn.setEnabled(False)
+            self.start_button.setVisible(False)
+            self.stop_scan_btn.setVisible(True)
+            self.stop_scan_btn.setEnabled(True)
+        else:
+            self.start_button.setVisible(True)
+            self.scan_gridLayout.addWidget(self.start_button, 0, 0, 2, 2)
 
     def stop_scan(self):
         self.sm.stop_scan()
-        self.scan_gridLayout.addWidget(self.start_btn_frame, 0, 0, 2, 2)
 
     def buffer(self, number, hexadecimal):
         self.hex_number.append(hexadecimal)
@@ -691,8 +705,7 @@ class Main_Utility(QMainWindow):
 
         pcba_image_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_image_lbl.setGeometry(QtCore.QRect(35, 30, 125, 45))
-        pcba_image_lbl.setPixmap(
-            QtGui.QPixmap(self.current_directory+"\\Pictures\\Sensor_PCBA.jpg"))
+        pcba_image_lbl.setPixmap(QtGui.QPixmap(self.current_directory+"\\Pictures\\Sensor_PCBA.jpg"))
         pcba_image_lbl.setScaledContents(True)
 
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
@@ -718,7 +731,7 @@ class Main_Utility(QMainWindow):
         pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 19))
         pcba_right_topCorner_id_lbl.setFont(self.font(20, 75, True))
 
-        if self.pcba_counter is 31:
+        if self.pcba_counter == 31:
             self.pcba_counter = 1
         if num < 31:
             pcba_right_topCorner_id_lbl.setText("A" + str(num))
@@ -746,14 +759,14 @@ class Main_Utility(QMainWindow):
 
     def pcba_print(self, box, increment):
 
-        if increment is self.sensor_num[1] - 1:
+        if increment == self.sensor_num[1] - 1:
             self.sensor_num[0] = True
             self.sort_btn.setEnabled(self.sensor_num[0])
 
-        if (increment % 6) is 0:
+        if (increment % 6) == 0:
             self.colbCount = 0
             self.rowCount += 1
-        if (self.counter % 30 is 0):
+        if (self.counter % 30 == 0):
             line = self.line()
             self.pcba_gridlayout.addWidget(line, self.rowCount - 2, 0, 7, 7)
         self.pcba_gridlayout.addWidget(box, self.rowCount, self.colbCount, 2, 2)
@@ -763,13 +776,14 @@ class Main_Utility(QMainWindow):
 
         self.counter += 1
 
-        if self.counter is self.sensor_num[1] + 1:
-            if self.continuation_flag is False:
-                pop = QMessageBox.information(self, "Done", "Done!")
-                self.temporary_csv()
+        if self.counter == self.sensor_num[1] + 1:
+            if self.continuation_flag == False:
+                self.switch_btn(True)
                 self.start_button.setEnabled(False)
+                QMessageBox.information(self, "Done", "Done!")
+                self.temporary_csv()
         else:
-            if self.continuation_flag is False:
+            if self.continuation_flag == False:
                 self.sm.scan_board()
 
     def left_check(self):
@@ -777,10 +791,10 @@ class Main_Utility(QMainWindow):
         if self.physical_num < self.sensor_num[1] + 2:
             self.right_arrow_btn.setEnabled(True)
 
-        if self.physical_num is 3:
+        if self.physical_num == 3:
             self.left_arrow_btn.setEnabled(False)
 
-        if self.physical_num is not 1:
+        if self.physical_num != 1:
             self.highlight(self.physical_num, False)
 
     def right_check(self):
@@ -788,10 +802,10 @@ class Main_Utility(QMainWindow):
         if self.physical_num > 1:
             self.left_arrow_btn.setEnabled(True)
             # locks button if it reaches the end
-        if self.physical_num is self.sensor_num[1]:
+        if self.physical_num == self.sensor_num[1]:
             self.right_arrow_btn.setEnabled(False)
 
-        if self.physical_num is not self.sensor_num[1] + 1:
+        if self.physical_num != self.sensor_num[1] + 1:
             self.highlight(self.physical_num, True)
 
     def highlight(self, nextNum, rightClick):
@@ -801,10 +815,10 @@ class Main_Utility(QMainWindow):
         if (rightClick):
 
             for key in self.pcba_frame_Dict:
-                if nextNum is self.pcba_frame_Dict.get(key):
+                if nextNum == self.pcba_frame_Dict.get(key):
                     key.setAutoFillBackground(True)
                     key.setPalette(self.palette(255, 139, 119))
-                    if key is not self.pcba_memory:
+                    if key != self.pcba_memory:
                         self.pcba_memory.append(key)
 
             if nextNum > 1:
@@ -816,6 +830,7 @@ class Main_Utility(QMainWindow):
             self.pcba_memory[nextNum - 3].setAutoFillBackground(True)
             self.pcba_memory.pop()
             self.physical_num -= 1
+
     #-Build Tab Methods
     def para_pwr_test(self):
         pass
@@ -828,7 +843,7 @@ class Main_Utility(QMainWindow):
         self.error_messages.clear()
         err_box = self.get_err_display_box()
         self.pass_flag = False
-        if build_test is True:
+        if build_test == True:
             self.build_error_box[0].setVisible(False)
             self.build_error_box[1].addWidget(err_box[0])
             self.update_progress_bar(10,progress_bar)
@@ -845,12 +860,12 @@ class Main_Utility(QMainWindow):
             return
 
         #power test result
-        if self.power_end is None:
+        if self.power_end == None:
             self.update_progress_bar(140,progress_bar)
             self.print_pwr_para_test_result(("Failed Test!"," Test Failed: Please Try Again",False),err_box,build_test)
             return
         self.progress_bar_counter = self.power_end[-1]
-        if self.power_end[2] is False:
+        if self.power_end[2] == False:
             if isinstance(self.power_end[1], str):  # Exit 2
                 self.update_progress_bar(45,progress_bar)
                 self.print_pwr_para_test_result(self.power_end,err_box,build_test)
@@ -859,22 +874,22 @@ class Main_Utility(QMainWindow):
                 self.update_progress_bar(45,progress_bar)
                 self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
-        elif build_test is False and self.power_end[2] is True:#Both program and final test enter here if they pass power test
+        elif build_test == False and self.power_end[2] == True:#Both program and final test enter here if they pass power test
             self.update_progress_bar(45,progress_bar)
             self.pass_flag = True
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-            if final_test is False and self.successfully_programmed_eeprom_flag is False:
+            if final_test == False and self.successfully_programmed_eeprom_flag == False:
                 self.eeprom_btn.setEnabled(True)
         #para test result for build test
         elif isinstance(self.power_end[4], str) and self.power_end[-2] == False:
             self.update_progress_bar(150,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
 
-        elif self.power_end[2] is True and self.power_end[5] is True:#Both pass Test
+        elif self.power_end[2] == True and self.power_end[5] == True:#Both pass Test
             self.pass_flag = True
             self.update_progress_bar(10,progress_bar)
             self.print_pwr_para_test_result(self.power_end,err_box,build_test)
-            if build_test is False and final_test is False and self.successfully_programmed_eeprom_flag is False:
+            if build_test == False and final_test == False and self.successfully_programmed_eeprom_flag == False:
                 self.eeprom_btn.setEnabled(True)
 
         else:
@@ -882,11 +897,11 @@ class Main_Utility(QMainWindow):
             self.final_powr_tuple = self.power_end
 
         self.update_progress_bar(10,progress_bar)
-        if self.pass_flag is True and final_test is False:
+        if self.pass_flag == True and final_test == False:
             self.program_tab.setEnabled(True)
 
         #temperature display
-        if self.power_end[2] is True and self.power_end[-2] is True:
+        if self.power_end[2] == True and self.power_end[-2] == True:
             self.update_progress_bar(10,progress_bar)
             temps = self.sm.get_temps()
             hex = self.sm.get_hex_ids()
@@ -899,14 +914,14 @@ class Main_Utility(QMainWindow):
             self.update_progress_bar(10,progress_bar)
         if build_test:
             progress_bar.setValue(160)#default will allways make it end at 100%
-        elif final_test is True:
+        elif final_test == True:
             print("final_test counter value: ",self.progress_bar_counter)
             progress_bar.setValue(100)
         else:
             progress_bar.setValue(100)
 
     def OneWireSort(self):
-        if self.report_fail_flag and self.continuation_flag is False:
+        if self.report_fail_flag and self.continuation_flag == False:
             inform = QMessageBox.warning(self,"failed save temp","Sensors failed to save into a temporary file\n Would you like to re-try?",QMessageBox.Yes|QMessageBox.No)
             if inform == QMessageBox.Yes:
                 self.temporary_csv()
@@ -915,8 +930,8 @@ class Main_Utility(QMainWindow):
                 self.report_fail_flag = False
                 self.OneWireSort()
         else:
-            if self.continuation_flag is False:
-                if self.pressed_flag is True:
+            if self.continuation_flag == False:
+                if self.pressed_flag == True:
                     call = QMessageBox.information(self, "Sort Button",
                                                    "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
                                                    QMessageBox.Yes | QMessageBox.No)
@@ -939,7 +954,7 @@ class Main_Utility(QMainWindow):
 
         # split hex list into zeros and ones
         for binary in bin_hex_list:
-            if binary[self.lsb] is "0":
+            if binary[self.lsb] == "0":
                 zero_list.append(binary)
             else:
                 one_list.append(binary)
@@ -958,7 +973,7 @@ class Main_Utility(QMainWindow):
 
         for order in self.final_order:  # order grabs the binary string
             for place in self.order_dict:  # place grabs the physical location
-                if order is self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
+                if order == self.order_dict[place]:  # searches throught the binary strings in order dict and puts them in final order
                     self.final_order[order] = place
                     self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
                     key_count += 1
@@ -968,7 +983,7 @@ class Main_Utility(QMainWindow):
         # this nested loop updates the pcba frame with its physical order
         for key in self.final_order:
             for frame in self.pcba_frame_Dict:
-                if run is next:
+                if run == next:
                     self.pcba_frame_Dict[frame] = self.final_order[key]
                 run += 1
             run = 0
@@ -1009,7 +1024,7 @@ class Main_Utility(QMainWindow):
                     count += 1
                     last = -2
 
-                elif hold[last] is list[count][last]:
+                elif hold[last] == list[count][last]:
                     last -= 1
 
                 elif hold[last] > list[count][last]:
@@ -1033,6 +1048,13 @@ class Main_Utility(QMainWindow):
         font.setBold(bold)
         font.setWeight(weigth)
         return font
+
+    def palette(self, red, green, blue):
+        palette = QtGui.QPalette()
+        brush = QtGui.QBrush(QtGui.QColor(red, green, blue))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
+        return palette
 
     def line(self):
         line = QtWidgets.QFrame()
@@ -1061,6 +1083,37 @@ class Main_Utility(QMainWindow):
         scrollArea.setFrameShadow(QtWidgets.QFrame.Plain)
         scrollArea.setWidgetResizable(resizable)
         return scrollArea
+
+    def clean_scrollArea(self,):
+        self.pcba_gridlayout = QGridLayout()
+        self.pcba_gridlayout.setVerticalSpacing(100)
+        self.pcba_gridlayout.setHorizontalSpacing(200)
+        self.pcba_gridlayout.setColumnStretch(7, 1)
+        self.pcba_gridlayout.setRowStretch(22, 1)
+
+        self.pcba_groupBox = QGroupBox()
+        self.pcba_groupBox.setFlat(True)
+        self.pcba_groupBox.setLayout(self.pcba_gridlayout)
+
+        self.reset_scan_variables()
+        self.scan_scrollArea.setWidget(self.pcba_groupBox)
+
+    def reset_scan_variables(self):
+        self.hex_number.clear()
+        self.hex_list.clear()
+        self.unchanged_hex_ids.clear()
+        self.pcba_hexList.clear()
+        self.pcba_frame_Highlight.clear()
+        self.pcba_hexDict.clear()
+        self.hex_lbl_Dict.clear()
+        self.hex_lbl_list.clear()
+        self.pcba_imgs.clear()
+        self.pcba_frame_Dict.clear()
+        self.pcba_counter = 1
+        self.counter = 1
+        self.sensor_num[0] = False
+        self.rowCount = 0
+        self.colbCount = 0
 
     def get_Button(self,embedded = None,b_x=895,b_y=400,length=180,height=160,name="Temp",name_ptSize=20,name_wight=75,name_bold=True,enabled=True):
         if embedded == None:
@@ -1095,7 +1148,7 @@ class Main_Utility(QMainWindow):
         frame_grid.addWidget(cable, 0, 6)
         frame_grid.setRowStretch(35, 1)
 
-        if boxNum is 1:
+        if boxNum == 1:
             line = QtWidgets.QFrame(frame)
             line.setWindowModality(QtCore.Qt.NonModal)
             line.setGeometry(QtCore.QRect(-7, 0, 10, 1250))
@@ -1145,7 +1198,7 @@ class Main_Utility(QMainWindow):
         return prog_bar
 
     def update_progress_bar(self,amount = 0,progress_bar = None,reset = False):
-        if reset is True:
+        if reset == True:
             self.progress_bar_counter =0
             progress_bar.setValue(0)
         else:
@@ -1197,13 +1250,12 @@ class Main_Utility(QMainWindow):
         cont = continuation.Continuation(self.file_contents)
         return cont
 
-
     def temporary_csv(self):
         try:
             hexlist = self.unchanged_hex_ids.copy()
             date = self.sm.get_date(True)
 
-            if self.report_dir is "":
+            if self.report_dir == "":
                 pathway = QMessageBox.warning(self, "Select Path", "Please select a directory to load your temporary csv document",
                                               QMessageBox.Ok)
                 if pathway == QMessageBox.Ok:
@@ -1220,10 +1272,10 @@ class Main_Utility(QMainWindow):
                 writer = csv.writer(file)
                 writer.writerow(["Description","Sort",date])
                 for _ in final_list:
-                    if x is 0:
+                    if x == 0:
                         writer.writerow(
                             [final_list[x][0], final_list[x][1], final_list[x][2]])
-                    elif x is 6:
+                    elif x == 6:
                         writer.writerow(
                             [final_list[x][0], final_list[x][1], final_list[x][2], final_list[x][3], "sensor id"])
                     elif x > 9:
@@ -1238,7 +1290,7 @@ class Main_Utility(QMainWindow):
             self.report_fail_flag = False
 
         except:
-            show= QMessageBox.information(self,"failed to Save Temp file","There was an error trying to save the temp file")
+            QMessageBox.information(self,"failed to Save Temp file","There was an error trying to save the temp file")
             self.report_fail_flag = True
 
     #file setting Modules
@@ -1352,7 +1404,7 @@ class Main_Utility(QMainWindow):
         """Opens file dialog for setting the save location for the report."""
         self.report_dir = QFileDialog.getExistingDirectory(
             self, "Select report save location.")
-        if self.path_check is True:
+        if self.path_check == True:
             self.final_path_lbl.setText(self.report_dir)
 
     def find_directory(self, path):
@@ -1396,7 +1448,7 @@ class Main_Utility(QMainWindow):
 
     def collect_all(self):
         '''function automates the file browser to pop up consecutively until they cancel or select the files they need.'''
-        if self.file_dict is None:
+        if self.file_dict == None:
             self.file_dict = dict()
         else:
             self.file_dict.clear()
@@ -1544,56 +1596,56 @@ class Main_Utility(QMainWindow):
         self.file_btn.setEnabled(True)
         # self.hex_number_lbl.clear()
         self.pcba_hexList.clear()
-        # self.hex_list.clear()
-        # self.pcba_frame_Highlight.clear()
-        # self.hex_lbl_Dict.clear()
-        # self.pcba_hexDict.clear()
-        # self.hex_lbl_list.clear()
-        # self.pcba_counter = 1
-        # # self.file_contents.clear()
-        # self.file_specs.clear()
-        # self.sensor_num = [False, 0]
+        self.hex_list.clear()
+        self.pcba_frame_Highlight.clear()
+        self.hex_lbl_Dict.clear()
+        self.pcba_hexDict.clear()
+        self.hex_lbl_list.clear()
+        self.pcba_counter = 1
+        # self.file_contents.clear()
+        self.file_specs.clear()
+        self.sensor_num = [False, 0]
         # self.file_description.clear()
-        # self.colbCount = 0
-        # self.rowCount = 0
-        # self.pcba_frame_Dict.clear()
-        # self.unchanged_hex_ids.clear()
-        # self.pcba_memory.clear()
-        # self.physical_num = 1
+        self.colbCount = 0
+        self.rowCount = 0
+        self.pcba_frame_Dict.clear()
+        self.unchanged_hex_ids.clear()
+        self.pcba_memory.clear()
+        self.physical_num = 1
         # self.lsb = -1
-        # self.counter = 1
-        # self.final_order.clear()
-        # self.order_dict.clear()
-        # self.pcba_imgs.clear()
-        # self.file_dict.clear()
-        # self.file_bool = False
-        # self.pressed_flag = False
+        self.counter = 1
+        self.final_order.clear()
+        self.order_dict.clear()
+        self.pcba_imgs.clear()
+        self.file_dict.clear()
+        self.file_bool = False
+        self.pressed_flag = False
         # self.desc_group.deleteLater()
-        # self.pcba_groupBox.deleteLater()
+        self.pcba_groupBox.deleteLater()
         # self.frame_group.deleteLater()
         self.scan_tab.setEnabled(False)
         self.build_tab.setEnabled(False)
         # self.total_sensor_ids.clear()
         self.program_tab.setEnabled(False)
         self.report_dir = ""
-        # self.hex_number.clear()
-        # self.pcba_current_number = 1
-        # self.error_num = 0
-        # self.path_check = False
-        # self.program_eeprom_flag = False
-        # self.scan_finished = False
-        # self.success_print.clear()
-        # self.build_live_temperature_list.clear()
-        # self.final_physical_order.clear()
-        # self.program_live_temperature_list.clear()
-        # self.before.clear()
-        # self.error_messages.clear()
-        # self.wrong_sensors_found_list.clear()
-        # self.successfully_programmed_eeprom_flag = False
-        # # self.settings.setValue("report_file_path", "/path/to/report/folder")
-        # ee = list(self.eeprom)
-        # ee.clear()
-        # self.eeprom = tuple(ee)
+        self.hex_number.clear()
+        self.pcba_current_number = 1
+        self.error_num = 0
+        self.path_check = False
+        self.program_eeprom_flag = False
+        self.scan_finished = False
+        self.success_print.clear()
+        self.build_live_temperature_list.clear()
+        self.final_physical_order.clear()
+        self.program_live_temperature_list.clear()
+        self.before.clear()
+        self.error_messages.clear()
+        self.wrong_sensors_found_list.clear()
+        self.successfully_programmed_eeprom_flag = False
+        # self.settings.setValue("report_file_path", "/path/to/report/folder")
+        ee = list(self.eeprom)
+        ee.clear()
+        self.eeprom = tuple(ee)
         self.sm.reset_variables()
         self.update_progress_bar(reset=True, progress_bar=self.final_test_prog_bar)
         self.sm.close_port()
