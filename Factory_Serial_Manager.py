@@ -87,9 +87,7 @@ class SerialManager(QObject):
                 notworking = QMessageBox.critical(self.page_dialog, "Scan Malfunction",
                                                   "The was an error scanning for the pcba")
         else:
-            connect = QMessageBox.warning(self.page_dialog, "serial port not Connected",
-
-                                          " Please connect the serial port in the tab above")
+            QMessageBox.warning(self.page_dialog, "serial port not Connected"," Please connect the serial port in the tab above")
     @pyqtSlot()
     def pcba_sensor(self):
         if self.ser.is_open:
