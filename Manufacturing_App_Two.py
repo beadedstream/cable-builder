@@ -288,28 +288,24 @@ class Main_Utility(QMainWindow):
         self.dtc_serial_lbl.setFont(self.font(20, 20, True))
 
         # scan btn
-        # self.start_btn_frame = self.create_square_frame()
         self.start_button = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nScan\n", name_ptSize=20,
                                             name_wight=20)
         self.start_button.clicked.connect(self.start_scan)
         # Stop scan btn
-        # self.stop_scan_btn_frame = self.create_square_frame()
         self.stop_scan_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nSTOP\n", name_ptSize=20,
                                              name_wight=20, enabled=False)
         self.stop_scan_btn.setVisible(False)
         self.stop_scan_btn.clicked.connect(self.stop_scan)
 
         # sort btn
-        # self.sort_btn_frame = self.create_square_frame()
         self.sort_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nSort\n", name_ptSize=20,
                                         name_wight=20, enabled=self.sensor_num[0])
-        # self.sort_btn.clicked.connect(self.OneWireSort)
+        self.sort_btn.clicked.connect(self.OneWireSort)
 
         # replace btn
-        # self.replace_btn_frame = self.create_square_frame()
         self.replace_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="Replace\nSensor\nBoard",
                                            name_ptSize=20, name_wight=20)
-        # self.replace_btn.clicked.connect(self.boardReplace)
+        self.replace_btn.clicked.connect(self.boardReplace)
 
         arrow_frame = QtWidgets.QFrame()
         arrow_grid = QGridLayout()
@@ -354,10 +350,9 @@ class Main_Utility(QMainWindow):
         self.build_scrollArea = self.get_ScrollArea()
 
         # Test cable btn
-        # self.powered_test_btn_frame = self.create_square_frame()
         self.powered_test_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="Test\nCable",
                                                 name_ptSize=20, name_wight=20)
-        # self.powered_test_btn.clicked.connect(self.para_pwr_test)
+        self.powered_test_btn.clicked.connect(self.para_pwr_test)
 
         self.build_error_box = self.get_err_display_box()
         self.build_error_box[0].setVisible(False)
@@ -453,7 +448,6 @@ class Main_Utility(QMainWindow):
     def calScreen(self):
         # calibrate = cal.SomethingForthekids
         pass
-
     # BuildScreen Button Methods
 
     # -Prep Tab Methods
@@ -694,7 +688,10 @@ class Main_Utility(QMainWindow):
         try:
             self.switch_btn(False)
             self.sm.total_pcba_num = self.sensor_num[1]
-            self.sm.scan_board()
+            result = self.sm.scan_board()
+            if isinstance(result,bool):
+                self.switch_btn(True)
+                return
             self.start_button.setVisible(False)
         except:
             self.switch_btn(True)
@@ -702,8 +699,10 @@ class Main_Utility(QMainWindow):
     def switch_btn(self, reset):
         if reset:
             self.return_btn.setEnabled(True)
+            self.start_button.setVisible(True)
             self.stop_scan_btn.setVisible(False)
             self.start_button.setVisible(True)
+
         elif reset == False:
             self.return_btn.setEnabled(False)
             self.start_button.setVisible(False)
@@ -726,15 +725,17 @@ class Main_Utility(QMainWindow):
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
         pcba_frame.setLineWidth(46)
+        pcba_frame.setGeometry(QtCore.QRect(0,0,300,200))#x,y,width,height
 
         pcba_image_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_image_lbl.setGeometry(QtCore.QRect(35, 30, 125, 45))
         pcba_image_lbl.setPixmap(QtGui.QPixmap(self.current_directory + "\\Pictures\\Sensor_PCBA.jpg"))
         pcba_image_lbl.setScaledContents(True)
-
+        
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
-        self.hex_number_lbl.setGeometry(QtCore.QRect(15, 77, 180, 16))
-        self.hex_number_lbl.setFont(self.font(18, 18, True))
+        self.hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 300, 16))#15,77,300,16
+        self.hex_number_lbl.setFont(self.font(16, 16, True))
+        self.hex_number_lbl.setFixedWidth(200)
 
         without_family_code_id = stripped_hex[:-3]
         self.unchanged_hex_ids.append(without_family_code_id)
@@ -774,7 +775,7 @@ class Main_Utility(QMainWindow):
 
         self.pcba_orderNum = QLabel(pcba_frame)
         self.pcba_orderNum.setGeometry(QtCore.QRect(144, 10, 50, 20))
-        self.pcba_orderNum.setFont(self.font(9, 10, True))
+        self.pcba_orderNum.setFont(self.font(20, 20, True))
 
         self.pcba_imgs.append(self.pcba_orderNum)
         self.pcba_frame_Dict[pcba_frame] = self.counter
@@ -809,6 +810,126 @@ class Main_Utility(QMainWindow):
         else:
             if self.continuation_flag == False:
                 self.sm.scan_board()
+
+    def OneWireSort(self):
+        if self.report_fail_flag and self.continuation_flag == False:
+            inform = QMessageBox.warning(self, "failed save temp",
+                                         "Sensors failed to save into a temporary file\n Would you like to re-try?",
+                                         QMessageBox.Yes | QMessageBox.No)
+            if inform == QMessageBox.Yes:
+                self.temporary_csv()
+                self.OneWireSort()
+            else:
+                self.report_fail_flag = False
+                self.OneWireSort()
+        else:
+            if self.continuation_flag == False:
+                if self.pressed_flag == True:
+                    call = QMessageBox.information(self, "Sort Button",
+                                                   "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
+                                                   QMessageBox.Yes | QMessageBox.No)
+
+                    if call == QMessageBox.Yes:
+                        self.yesButton()
+                        self.lsb = -1
+                        self.final_order.clear()
+                        self.order_dict.clear()
+                        self.physical_num = 1
+
+            self.pressed_flag = True
+
+        zero_list = []
+        one_list = []
+        bin_hex_list = []
+
+        for hex in self.pcba_hexList:
+            bin_hex_list.append(bin(hex))
+
+        # split hex list into zeros and ones
+        for binary in bin_hex_list:
+            if binary[self.lsb] == "0":
+                zero_list.append(binary)
+            else:
+                one_list.append(binary)
+
+        zList = len(zero_list)
+        self.Halfsies(zero_list, 1, len(zero_list))
+        self.Halfsies(one_list, zList + 1, len(one_list))
+
+        count = 0
+        # this for loop creates a dictionary with binary as key and number as value
+        for b in bin_hex_list:
+            self.final_order[b] = str(count)
+            count += 1
+
+        key_count = 0
+
+        for order in self.final_order:  # order grabs the binary string
+            for place in self.order_dict:  # place grabs the physical location
+                if order == self.order_dict[place]:# searches throught the binary strings in order dict and puts them in final order
+                    self.final_order[order] = place
+                    self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
+                    key_count += 1
+
+        run = 0
+        next = 0
+        # this nested loop updates the pcba frame with its physical order
+        for key in self.final_order:
+            for frame in self.pcba_frame_Dict:
+                if run == next:
+                    self.pcba_frame_Dict[frame] = self.final_order[key]
+                run += 1
+            run = 0
+            next += 1
+
+        c = 0
+        for phys_num in self.final_order:  # this loop puts that number as a label to the frame box of pcba's
+            self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
+            c += 1
+
+        # this bottom loop puts the final order according to its hex so that I may use it for error checking during the parasidic and pwr test
+        count = 0
+        for run in self.final_order:
+            self.final_physical_order[self.hex_list[count]] = self.final_order[run]
+            count += 1
+
+        for key in self.final_physical_order:
+            self.total_sensor_ids.append(key)
+
+        self.file_btn.setEnabled(False)
+        self.right_arrow_btn.setEnabled(True)
+        self.highlight(self.physical_num, True)
+        self.sort_btn.setEnabled(False)
+        self.buildDisplay()
+        self.final_order.clear()
+        self.build_tab.setEnabled(True)
+
+    def Halfsies(self, list, key, size):
+        '''This method sorts and puts the given list into the self.order_dict dictionary'''
+        count = 1
+        last = -2
+        k = key
+
+        for run in range(size):
+            hold = list[0]
+            while count < len(list):
+                if hold[last] < list[count][last]:
+                    count += 1
+                    last = -2
+
+                elif hold[last] == list[count][last]:
+                    last -= 1
+
+                elif hold[last] > list[count][last]:
+                    first_index = list.index(hold)
+                    hold = list[count]
+                    list[first_index], list[count] = list[count], list[first_index]
+                    last = -2
+                    count = 1
+            self.order_dict[k] = hold  # this will put the least on top
+            k += 1
+            count = 1
+            list.remove(hold)
 
     def left_check(self):
         self.pcba_current_number -= 1
@@ -855,10 +976,104 @@ class Main_Utility(QMainWindow):
             self.pcba_memory.pop()
             self.physical_num -= 1
 
+    def boardReplace(self):
+        self.message = QDialog()
+        self.message.resize(650, 150)
+        self.message.setSizeGripEnabled(True)
+        self.message.setWindowTitle("Board Replace")
+
+        msg_grid = QGridLayout()
+        self.message.setLayout(msg_grid)
+
+        self.msg_lineEdit = QtWidgets.QLineEdit(self.message)
+        self.msg_lineEdit.setGeometry(QtCore.QRect(350, 10, 270, 22))
+        self.msg_lineEdit.setPlaceholderText("ex: 5")
+        self.msg_lineEdit.setEnabled(True)
+
+        replace_label = QtWidgets.QLabel(self.message)
+        replace_label.setGeometry(QtCore.QRect(10, 10, 550, 20))
+        replace_label.setText("Enter the Board you would like to Replace:")
+        replace_label.setFont(self.font(15, 20, True))
+
+        self.msg_lineEdit.returnPressed.connect(self.sortButtonWarning)
+
+        x = self.message.exec_()
+
+    def sortButtonWarning(self):
+        try:
+            num = int(self.msg_lineEdit.text())
+            # these two if statements are an error check!
+            if num > self.sensor_num[1] or num < 1:
+                error = QMessageBox.critical(self.message, "Error", "Physical number not found please enter again",
+                                             QMessageBox.Ok)
+                if error == QMessageBox.Ok:
+                    self.message.close()
+                    self.boardReplace()
+            else:
+                self.newScan(self.msg_lineEdit.text())
+                QMessageBox.information(self.message, "Done","Done ")
+                # self.sort_btn.setEnabled(True)
+                self.noButton()
+
+        except:
+            warning = QMessageBox.critical(self.message, "Error", "Please Type in a number with in the boards!",
+                                           QMessageBox.Ok)
+            if warning == QMessageBox.Ok:
+                self.message.close()
+                self.boardReplace()
+
+    def newScan(self, phy_num,update_hex = None):
+        if update_hex is None:
+            scan_new = QMessageBox.information(self.message, "Scan New pcba", "Please Scan New PCBA Board", QMessageBox.Ok)
+            if scan_new == QMessageBox.Ok:
+                new_scanned_hex = self.sm.board_replace_scan()
+        else:
+            new_scanned_hex = update_hex
+        # this loop updates self.pcba_hexList
+        for oldHex in self.pcba_hexDict:
+            if self.pcba_hexDict[oldHex] is int(phy_num):
+                old_hex_stripped = oldHex.replace(" ", "")
+                new_hex = new_scanned_hex.replace(" ","")
+
+                self.unchanged_hex_ids.insert(self.unchanged_hex_ids.index(oldHex[:-3]),new_scanned_hex)
+                self.unchanged_hex_ids.remove(oldHex[:-3])
+                self.final_physical_order[new_hex] = self.final_physical_order.get(old_hex_stripped)
+                self.update_list_of_sensor_ids(new_id=old_hex_stripped, remove_id=True)#then add the new hex
+                self.update_list_of_sensor_ids(new_id=new_hex)
+                del self.final_physical_order[old_hex_stripped]
+                temp = int(old_hex_stripped, 16)
+                index = self.pcba_hexList.index(temp)#this is updated so that we can re-sort
+                self.pcba_hexList.remove(temp)
+                self.pcba_hexList.insert(index, temp)
+                break
+
+        for key in self.hex_lbl_Dict:
+            if self.hex_lbl_Dict.get(key) is int(phy_num):
+                key.setText(new_scanned_hex)
+                break
+
+    def update_list_of_sensor_ids(self, new_list=None, new_id=None, remove_id=False, replace_id=False, index=None,
+                                  insert_id=False):
+        if remove_id:
+            try:
+                self.total_sensor_ids.remove(new_id)
+            except:
+                return
+        elif new_list != None:
+            self.total_sensor_ids += new_list
+        elif replace_id:
+            self.total_sensor_ids.insert(index, new_id)
+            self.total_sensor_ids.pop(index + 1)
+        elif insert_id:
+            self.total_sensor_ids.insert(index, new_id)
+        else:
+            self.total_sensor_ids.append(new_id)
+    def noButton(self):
+        self.message.close()
+
     # -Build Tab Methods
     def para_pwr_test(self):
-        pass
-        # self.parasidic_and_power_test(build_test = True,progress_bar=self.progress_bar)
+        self.parasidic_and_power_test(build_test = True,progress_bar=self.build_bar)
 
     def parasidic_and_power_test(self, build_test=True, final_test=False, progress_bar=None):
         self.update_progress_bar(reset=True, progress_bar=progress_bar)
@@ -947,126 +1162,247 @@ class Main_Utility(QMainWindow):
         else:
             progress_bar.setValue(100)
 
-    def OneWireSort(self):
-        if self.report_fail_flag and self.continuation_flag == False:
-            inform = QMessageBox.warning(self, "failed save temp",
-                                         "Sensors failed to save into a temporary file\n Would you like to re-try?",
-                                         QMessageBox.Yes | QMessageBox.No)
-            if inform == QMessageBox.Yes:
-                self.temporary_csv()
-                self.OneWireSort()
+    def buildDisplay(self):
+        cable_grid = QGridLayout()
+        cable_grid.setVerticalSpacing(100)
+        cable_grid.setHorizontalSpacing(160)
+        cable_grid.setRowStretch(2, 1)
+        cable_grid.setColumnStretch(10, 1)
+        cable_group = QGroupBox()
+        cable_group.setLayout(cable_grid)
+
+        program_grid = QGridLayout()
+        program_grid.setVerticalSpacing(100)
+        program_grid.setHorizontalSpacing(160)
+        program_grid.setRowStretch(2, 1)
+        program_grid.setColumnStretch(10, 1)
+        program_group = QGroupBox()
+        program_group.setLayout(program_grid)
+
+        z = 0
+        row = 0
+        column = 0
+        total = self.sensor_num[1]+2
+
+        for qt in range(0, total):
+            if column % 9 is 0:
+                row += 1
+                column = 0
+            build_box = self.build_img(z, False)
+            prog_Box = self.build_img( z, True)
+            cable_grid.addWidget(build_box, row, column, 2, 2)
+            program_grid.addWidget(prog_Box, row, column, 2, 2)
+            column += 1
+            z += 1
+
+        self.build_scrollArea.setWidget(cable_group)
+        self.program_scrollArea.setWidget(program_group)
+
+    def build_img(self,orderNum, program):
+        cable_frame = QtWidgets.QFrame()
+        cable_frame.setGeometry(QtCore.QRect(170, 60, 161, 51))
+        cable_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
+        cable_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        cable_frame.setLineWidth(46)
+
+        cable_img = QtWidgets.QLabel(cable_frame)
+        cable_img.setGeometry(QtCore.QRect(0, 20, 161, 31))
+
+        if orderNum >= 1:
+            cable_temperature = QtWidgets.QLabel(cable_frame)
+            cable_temperature.setGeometry(QtCore.QRect(110,50,50,21))
+            cable_temperature.setText("20.0C"+chr(176))#THIS WAS COMMENTED OUT
+            cable_temperature.setFont(self.font(15,15,True))
+            if program:
+                self.program_live_temperature_list.append(cable_temperature)
             else:
-                self.report_fail_flag = False
-                self.OneWireSort()
+                self.build_live_temperature_list.append(cable_temperature)
+        # build display
+        if program == False:
+            if orderNum == 0:#connector
+                cable_img.setPixmap(QtGui.QPixmap(self.connector_image_type[0]))
+                length = ""
+            elif orderNum == 1 and self.has_Marker() is True and self.has_protection_board() is True:  # build page
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[2]))
+            elif orderNum == 1 and self.has_Marker() is False and self.has_protection_board() is True:
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[1]))
+            elif orderNum == 1 and self.has_Marker() is False and self.has_protection_board() is False:
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[0]))
+            else:
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[0]))
+        # program page display
         else:
-            if self.continuation_flag == False:
-                if self.pressed_flag == True:
-                    call = QMessageBox.information(self, "Sort Button",
-                                                   "Are you sure that you want to re-sort all the boards one more time? (Y/N) ",
-                                                   QMessageBox.Yes | QMessageBox.No)
-
-                    if call == QMessageBox.Yes:
-                        self.yesButton()
-                        self.lsb = -1
-                        self.final_order.clear()
-                        self.order_dict.clear()
-                        self.physical_num = 1
-
-            self.pressed_flag = True
-
-        zero_list = []
-        one_list = []
-        bin_hex_list = []
-
-        for hex in self.pcba_hexList:
-            bin_hex_list.append(bin(hex))
-
-        # split hex list into zeros and ones
-        for binary in bin_hex_list:
-            if binary[self.lsb] == "0":
-                zero_list.append(binary)
+            if orderNum == 0:
+                cable_img.setPixmap(QtGui.QPixmap(self.connector_image_type[1]))
+            elif self.ra_mold.get(str(orderNum)) is True:
+                if orderNum == '1':
+                    cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[8]))
+                else:
+                    cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[4]))
+            elif orderNum == 1 and self.has_Marker() is True and self.has_protection_board() is True:  # build page
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[10]))
+            elif orderNum == 1 and self.has_Marker() is False and self.has_protection_board() is True:
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[9]))
+            elif orderNum == 1 and self.has_Marker() is False and self.has_protection_board() is False:
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[3]))
             else:
-                one_list.append(binary)
+                cable_img.setPixmap(QtGui.QPixmap(self.cable_image_list[3]))
 
-        zList = len(zero_list)
-        self.Halfsies(zero_list, 1, len(zero_list))
-        self.Halfsies(one_list, zList + 1, len(one_list))
+        cable_img.setScaledContents(True)
 
-        count = 0
-        # this for loop creates a dictionary with binary as key and number as value
-        for b in bin_hex_list:
-            self.final_order[b] = str(count)
-            count += 1
+        length_lbl = QtWidgets.QLabel(cable_frame)
+        if self.sensor_length[orderNum-1] == 'N/A' or self.sensor_length[orderNum-1] == '-' or orderNum == 0 :
+            length_lbl.setText("")
+        else:
+            length_lbl.setText(self.sensor_length[orderNum-1])
 
-        key_count = 0
+        if orderNum >= 1:
+            if orderNum == 1:
+                if self.has_Marker():
+                    marker_lbl = QtWidgets.QLabel(cable_frame)
+                    marker_lbl.setText(self.sensor_length[orderNum])
+                    marker_lbl.setGeometry(QtCore.QRect(65,0,41,21))
+                    marker_lbl.setFont(self.font(16,16,True))
+                    length_lbl.setGeometry(QtCore.QRect(9,0,50,21))
+                    length_lbl.setFont(self.font(16,16,True))
+                else:
+                    length_lbl.setGeometry(QtCore.QRect(35,0,50,21))
+                    length_lbl.setFont(self.font(16,16,True))
+                physical_num_lbl = QtWidgets.QLabel(cable_frame)
+                physical_num_lbl.setText(str(orderNum))
+                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 16))
+                physical_num_lbl.setFont(self.font(16, 16, True))
 
-        for order in self.final_order:  # order grabs the binary string
-            for place in self.order_dict:  # place grabs the physical location
-                if order == self.order_dict[
-                    place]:  # searches throught the binary strings in order dict and puts them in final order
-                    self.final_order[order] = place
-                    self.hex_lbl_Dict[self.hex_lbl_list[key_count]] = place
-                    key_count += 1
+            else:
+                if self.sensor_length[orderNum-1] != 'N/A' or self.sensor_length[orderNum-1] != '-':
+                    length_lbl.setText(self.sensor_length[orderNum])
+                length_lbl.setGeometry(QtCore.QRect(40, 0, 50, 21))  # this deals with the label geometry placement
+                length_lbl.setFont(self.font(16,16, True))
+                physical_num_lbl = QtWidgets.QLabel(cable_frame)
+                physical_num_lbl.setText(str(orderNum))
+                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 16))
+                physical_num_lbl.setFont(self.font(17,17, True))
 
-        run = 0
-        next = 0
-        # this nested loop updates the pcba frame with its physical order
-        for key in self.final_order:
-            for frame in self.pcba_frame_Dict:
-                if run == next:
-                    self.pcba_frame_Dict[frame] = self.final_order[key]
-                run += 1
-            run = 0
-            next += 1
+        return cable_frame
 
-        c = 0
-        for phys_num in self.final_order:  # this loop puts that number as a label to the frame box of pcba's
-            self.pcba_imgs[c].setText(str(self.final_order[phys_num]))
-            c += 1
+    def print_pwr_para_test_result(self, result, err_box, build_test=True):
+        # pwr Failed test
+        if result[2] is False and len(result) >= 3:
+            err_box[0].setPalette(self.palette(255, 139, 119))
 
-        # this bottom loop puts the final order according to its hex so that I may use it for error checking during the parasidic and pwr test
-        count = 0
-        for run in self.final_order:
-            self.final_physical_order[self.hex_list[count]] = self.final_order[run]
-            count += 1
+            if isinstance(result[1], list):
+                for physical_num in result[1]:
+                    lbl = self.create_label(txt ="Position " + str(physical_num) + " Wrong ID: Unexpected id returned",
+                                            f_size= 0,f_weight=30,f_bold= True,g_x= 100,g_y= 100,g_length= 150,g_height= 50)
+                    self.error_messages.append(lbl)
+                if build_test is True:
+                    change = QMessageBox.critical(self, "Wrong Sensor Found",
+                                                  "Would you like to update or ignore the new board?",
+                                                  QMessageBox.Apply | QMessageBox.Ignore)
+                    if change == QMessageBox.Ignore:
+                        pass
+                    elif change == QMessageBox.Apply:
+                        recent_hex_list = self.sm.hex_or_temps_parser(3, "1", optional=True)
+                        check = self.sm.get_hex_ids()
+                        protection_board = self.get_protection_board_id(1)
+                        recent_hex_list.remove(protection_board)
+                        for hex in self.unchanged_hex_ids:
+                            if hex in recent_hex_list:
+                                recent_hex_list.remove(hex)
 
-        for key in self.final_physical_order:
-            self.total_sensor_ids.append(key)
+                        self.newScan(self.power_end[1][0], update_hex=recent_hex_list[0])
 
-        self.file_btn.setEnabled(False)
-        self.right_arrow_btn.setEnabled(True)
-        self.highlight(self.physical_num, True)
-        self.sort_btn.setEnabled(False)
-        self.buildDisplay()
-        self.final_order.clear()
-        self.build_tab.setEnabled(True)
+            elif isinstance(result[1], str):
+                lbl = self.create_label(txt= result[1],f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
+                self.error_messages.append(lbl)
 
-    def Halfsies(self, list, key, size):
-        '''This method sorts and puts the given list into the self.order_dict dictionary'''
-        count = 1
-        last = -2
-        k = key
+            elif isinstance(result[1], tuple):
+                lbl = self.create_label(txt= result[1],f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
+                self.error_messages.append(lbl)
 
-        for run in range(size):
-            hold = list[0]
-            while count < len(list):
-                if hold[last] < list[count][last]:
-                    count += 1
-                    last = -2
+            elif isinstance(result[1], dict):
+                for phy_num in result[1]:
+                    if result[1].get(phy_num) == 85:
+                        lbl = self.create_label(txt = "Position " + str(phy_num + 1) + " Power Failure: Sensor returns 85",
+                                                f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
 
-                elif hold[last] == list[count][last]:
-                    last -= 1
+                    elif result[1].get(phy_num) > 90:
+                        lbl = self.create_label(txt= "Position " + str(phy_num + 1) + " Failed: Sensor returns temperature higher than 90 or nothing",
+                                                f_size= 30,f_weight=30,f_bold=True, g_x=0, g_y=0,g_length=150, g_height=50)
+                    self.error_messages.append(lbl)
 
-                elif hold[last] > list[count][last]:
-                    first_index = list.index(hold)
-                    hold = list[count]
-                    list[first_index], list[count] = list[count], list[first_index]
-                    last = -2
-                    count = 1
-            self.order_dict[k] = hold  # this will put the least on top
-            k += 1
-            count = 1
-            list.remove(hold)
+        # para test
+        elif len(result) == 6 and result[2] is False and result[5] is False:
+            if isinstance(result[4], str):
+                lbl = self.create_label(txt= result[3] + "\n" + result[4],f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
+                self.error_messages.append(lbl)
+
+            if isinstance(result[1], list) and isinstance(result[4], list):
+                for physical_num in self.final_physical_order:
+                    lbl = self.create_label(txt= "Position: " + str(physical_num) + " Failed id",f_size= 30,f_weight= 30,f_bold= True,g_x= 0,
+                                            g_y= 0,g_length= 150,g_height= 50)
+                    self.error_messages.append(lbl)
+
+        # PASSED TEST
+        elif build_test is False and result[2] is True:
+            err_box[0].setPalette(self.palette(50, 205, 50))
+            lbl = self.create_label(txt= "Test Succesful!",f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
+            self.error_messages.append(lbl)
+
+        elif result[2] is True and result[5] is True:
+            err_box[0].setPalette(self.palette(50, 205, 50))
+            lbl = self.create_label(txt= "Test Succesful!",f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
+            self.error_messages.append(lbl)
+
+        self.print_to_err_box(err_box, 0, build_test)
+
+    def print_to_err_box(self, box, key, build_test=True):
+        if key == 0:
+            if build_test is True:
+                self.build_error_box[0].setVisible(True)
+            else:
+                self.prog_err_box_contents[0].setVisible(True)
+
+            self.current_display_error_box = box.copy()
+
+            if len(self.error_messages) == 1:
+                box[1].addWidget(self.error_messages[0], 0, 0, 11, 11)
+
+            elif len(self.error_messages) > 1:
+                box[0].setPalette(self.palette(255, 139, 119))
+                x = 0
+                for lbl in self.error_messages:
+                    box[1].addWidget(lbl, x, 0, 11, 11)
+                    x += 4
+
+            if build_test is True:
+                self.build_error_box[1].addWidget(box[0], 11, 1, 2, 11)
+            else:
+                self.prog_err_box_contents[1].addWidget(box[0], 11, 1, 2, 11)
+        elif key == 1:
+            self.build_error_box[0].setVisible(True)
+            self.prog_err_box_contents[0].setVisible(True)
+            box[0].setVisible(True)
+            box[0].setPalette(self.palette(50, 205, 50))
+            eeprom_message = QLabel()
+            eeprom_message.setText(self.programmed_success_message)
+            eeprom_message.setFont(self.font(10, 10, True))
+            box[1].addWidget(eeprom_message, 0, 0, 11, 11)
+
+            # self.program_gridLayout.addWidget(box[0],12,1,2,11)
+            self.prog_err_box_contents[1].addWidget(box[0], 11, 1, 2, 11)
+            print("length of Qgridlaout: ", len(self.prog_err_box_contents[1]))
+        elif key == 2:
+            self.prog_err_box_contents[0].setVisible(True)
+            box[0].setVisible(True)
+            box[0].setPalette(self.palette(255, 139, 119))
+            fail_message = QLabel()
+            fail_message.setText(self.fail_message)
+            fail_message.setFont(self.font(10, 10, True))
+            box[1].addWidget(fail_message, 0, 0, 11, 11)
+
+            self.prog_err_box_contents[1].addWidget(box[0], 11, 1, 2, 11)
+            self.program_gridLayout.addWidget(box[0], 12, 1, 2, 11)
 
     # Program Tab Methods
 
@@ -1201,8 +1537,7 @@ class Main_Utility(QMainWindow):
         return frame
 
     def create_label(self, embedded=None, has_pixmap=False, txt="", f_size=0, f_weight=0, f_bold=False, g_x=0, g_y=0,
-                     g_length=0,
-                     g_height=0, pixmap="", scale_content=False):
+                     g_length=0,g_height=0, pixmap="", scale_content=False):
         ''' go back and adjust all of the label calls to call to this function, do this during the refactoring phase.'''
         if embedded == None:
             lbl = QtWidgets.QLabel()
@@ -1241,6 +1576,18 @@ class Main_Utility(QMainWindow):
         protection_board = self.file_specs[3][0]
         pb = protection_board[:10]
         if pb == 'Protection':
+            return True
+        else:
+            return False
+
+    def has_Marker(self):
+        marker_list = self.file_specs[2]
+        counter = 0
+        for detail in marker_list:
+            if detail != "N/A":
+                counter += 1
+
+        if counter >= 3:
             return True
         else:
             return False
