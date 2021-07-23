@@ -1,13 +1,14 @@
-import re
 import os
+import re
 import time
-import serial
 from datetime import date
+
+import serial
 # import Result_Page_Dialog
 import serial.tools.list_ports
 from PyQt5 import QtGui
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QMessageBox, QDialog, QFileDialog,QProgressBar
+from PyQt5.QtWidgets import QMessageBox, QDialog, QFileDialog, QProgressBar
 
 
 class SerialManager(QObject):
@@ -59,7 +60,7 @@ class SerialManager(QObject):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
 
-    #Utility Methods
+    # Utility Methods
     def get_date(self, with_dash=False):
         dt = date.today()
         if with_dash:
@@ -79,13 +80,21 @@ class SerialManager(QObject):
         prog_bar.setValue(counter)
         return counter
 
-    #scan page methods
+    def get_unchanged_ids(self):
+        if len(self.unchanged_ids) == 0:
+            self.unchanged_ids = self.hex_or_temps_parser(3, "1", True)
+            return self.unchanged_ids
+
+        return self.unchanged_ids
+
+    # scan page methods
     @pyqtSlot()
     def scan_board(self):
         if self.ser.is_open:
             try:
                 if self.scan_reactivation_flag:
-                    result = QMessageBox.information(self.page_dialog,"Wish to Continue","Continue?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
+                    result = QMessageBox.information(self.page_dialog, "Wish to Continue", "Continue?",
+                                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                     if result == QMessageBox.No:
                         self.reset_scan_page()
                         self.scan_reactivation_flag = False
@@ -101,18 +110,22 @@ class SerialManager(QObject):
                 notworking = QMessageBox.critical(self.page_dialog, "Scan Malfunction",
                                                   "The was an error scanning for the pcba")
         else:
-            QMessageBox.warning(self.page_dialog, "serial port not Connected"," Please connect the serial port in the tab above")
+            QMessageBox.warning(self.page_dialog, "serial port not Connected",
+                                " Please connect the serial port in the tab above")
+
     @pyqtSlot()
     def pcba_sensor(self):
         if self.ser.is_open:
             try:
                 while self.scan_flag:
-                    self.ser.write("temps 2\r\n".encode())
-                    data = self.ser.read_until(self.end).decode()
-                    data_split = data.split("\n")
-                    hex_line = data_split[2]
-                    sensor_num = hex_line[2:3]
-
+                    try:
+                        self.ser.write("temps 2\r\n".encode())
+                        data = self.ser.read_until(self.end).decode()
+                        data_split = data.split("\n")
+                        hex_line = data_split[2]
+                        sensor_num = hex_line[2:3]
+                    except:
+                        continue
                     if sensor_num == '1' and len(data_split) > 5:
                         pcba_hex = data_split[3]
                         hex_number = pcba_hex[5:23]
@@ -136,8 +149,8 @@ class SerialManager(QObject):
 
         else:
             QMessageBox.critical(self.page_dialog, "Port not found",
-                                         "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
-                                         QMessageBox.Ok)
+                                 "Please check Serial port connection in the 'Serial' tab. Port was not opened or connected",
+                                 QMessageBox.Ok)
             # self.page_dialog.show()
             # if error == QMessageBox.Ok:
             #     self.page_dialog.close()
@@ -149,7 +162,7 @@ class SerialManager(QObject):
             self.counter = 0
             self.clean_scan_page.emit()
         except:
-            QMessageBox.critical(self.page_dialog,"Failed","Failed to clean page")
+            QMessageBox.critical(self.page_dialog, "Failed", "Failed to clean page")
 
     def stop_scan(self):
         self.scan_reactivation_flag = True
@@ -194,7 +207,7 @@ class SerialManager(QObject):
                 board_err = QMessageBox.critical(self.page_dialog, "board not Replaced",
                                                  "There was an error trying to load the board")
 
-    #Build page methods
+    # Build page methods
     @pyqtSlot()
     def Test_Cable(self, total_sensor_amount, pcba_id_dict, progBar, progress_bar_counter, has_protection_board,
                    build_test=True):
@@ -292,7 +305,6 @@ class SerialManager(QObject):
                 if build_test is False:
                     return self.test_result_tuple + (progress_bar_counter,)
 
-
                 # TODO: below is only for the build test
                 parasidic_test_results = self.parasidic_Test(total_sensor_amount, pcba_id_dict)
                 progress_bar_counter = self.update_prog_bar(progress_bar_counter, progBar)
@@ -384,8 +396,7 @@ class SerialManager(QObject):
                     t_list = temp_list.copy()
                     temp_list.clear()
 
-                    for t in t_list:
-                        temp_list.append(float(t))
+                    [temp_list.append(float(t)) for t in t_list]
 
                     pcba = (hex_list, temp_list)
                     return pcba
@@ -403,7 +414,7 @@ class SerialManager(QObject):
                         self.unchanged_ids.pop()
                         self.unchanged_ids.pop()
                 else:
-                    return False,False
+                    return False, False
             except:
                 return False
 
@@ -473,6 +484,22 @@ class SerialManager(QObject):
             pass_dict[True] = True
             return pass_dict
 
+    def check_eeprom(self):
+        if self.ser.is_open:
+            if self.eeprom != "":
+                return True
+
+            self.flush_buffers()
+            self.ser.write("config \r\n".encode())
+            info = self.ser.read_until(self.end).decode()
+            info_grab = info.split("\r\n")
+            if len(info_grab) > 40:
+                return ("Missing EEProm", "Missing EEProm", False)
+            for s in info_grab:
+                if s[:6] == "eeprom":  # might need to put a break once the eeprom is found
+                    self.eeprom = s[6:]
+            return True
+
     def parasidic_Test(self, total_sensor_amount, pcba_id_dict):
         # global result_tuple
         self.flush_buffers()
@@ -535,10 +562,70 @@ class SerialManager(QObject):
                 write_error = QMessageBox.critical(self.page_dialog, "Write Error",
                                                    "There was an error with the parasidc test")
 
+    # program page methods
+    def eeprom_program(self, top_list, sensor_positions_list, hex_list_to_be_sent):
+        if self.ser.is_open:
+            try:
+                # clear previous memory.
+                self.reset_eeprom()
 
+                bottom_of_list = self.get_meta_data_info()
+                config_list = top_list + bottom_of_list
 
+                self.metadata_information = config_list.copy()
 
-    #Program Methods
+                for line in reversed(config_list):
+                    self.ser.write(("tac-ee-meta 1 w " + line + "\r\n").encode())
+                    garbage = self.ser.read_until(self.end).decode()
+                    time.sleep(1)
+                self.ser.write(" \r\n".encode())
+                self.ser.read_until(self.end).decode()
+
+                # load ids
+                self.flush_buffers()
+                if hex_list_to_be_sent is False or len(hex_list_to_be_sent) != len(sensor_positions_list):
+                    QMessageBox.critical(self.page_dialog, "warning", "Failed to program\n Please Try Again")
+                    return
+
+                # sensor Position loader
+                self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+                for id in hex_list_to_be_sent:
+                    time.sleep(.5)
+                    self.ser.write((id + " \r\n").encode())
+
+                self.flush_buffers()
+                self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
+                for positions in sensor_positions_list:
+                    time.sleep(.5)
+                    self.ser.write((positions + " \r\n").encode())
+
+                self.program_eeprom_flag = True
+
+                self.flush_buffers()
+            except:
+                self.ser.write(" \r\n".encode())
+
+    def get_meta_data_info(self):
+        meta_data_list = list()
+        current_date = self.get_date()
+        meta_data_list.append("date created @ " + current_date)
+        meta_data_list.append("coefficients @ 43.0,-0.18,0.000139")
+        meta_data_list.append("hardware @ 1.0d")
+        return meta_data_list
+
+    def reset_eeprom(self):
+        self.flush_buffers()
+        self.ser.write("tac-ee-meta-overwrite 1".encode())
+        self.ser.write(" \r\n".encode())
+
+        self.ser.write("tac-ee-load-ids 1 \r\n".encode())
+        self.ser.write(" \r\n".encode())
+
+        self.ser.write("tac-ee-load-spacings 1 \r\n".encode())
+        self.ser.write(" \r\n".encode())
+
+        self.flush_buffers()
+        result = self.ser.read_until(self.end).decode()
 
     # Port Functions
     def wake_up_call(self):
@@ -590,7 +677,66 @@ class SerialManager(QObject):
         """Closes serial port."""
         self.ser.close()
 
-    #closing Fucntion
+    # troubleshooting funcntions
+    # def test(self):
+    #     start_time = time.time()
+    #     if self.ser.is_open:
+    #         self.flush_buffers()
+    #         print("****START REGULAR test****")
+    #         self.ser.write("config\r\n".encode())
+    #         before_input_buffer = self.ser.in_waiting
+    #         before_output_buffer = self.ser.out_waiting
+    #         after_input_buffer = self.ser.in_waiting
+    #         after_output_buffer = self.ser.out_waiting
+    #         resutl = self.ser.read_until(self.end).decode()
+    #         end_time = time.time() - start_time
+    #         print(
+    #             "Bytes in Waiting BEFORE:{}\nBytes Out in Waiting Before:{}\nBytes in Waiting AFTER:{}\nBytes Out in Waiting AFTER:{}\nTIME IT TOOK:{}\n output:{}\n****END****".format(
+    #                 before_input_buffer, before_output_buffer, after_input_buffer, after_output_buffer, end_time,
+    #                 resutl))
+    #
+    #         start_time = time.time()
+    #         print("****START RESET INPUT test****")
+    #
+    #         output = self.ser.reset_input_buffer()
+    #
+    #         before_input_buffer = self.ser.in_waiting
+    #         before_output_buffer = self.ser.out_waiting
+    #         after_input_buffer = self.ser.in_waiting
+    #         after_output_buffer = self.ser.out_waiting
+    #         self.ser.write("config\r\n".encode())
+    #         resutl = self.ser.read_until(self.end).decode()
+    #         end_time = time.time() - start_time
+    #         print("Bytes in Waiting BEFORE:{}\nBytes Out in Waiting Before:{}\nBytes in Waiting AFTER:{}\n"
+    #               "Bytes Out in Waiting AFTER:{}\nTIME IT TOOK:{}\n output:{}\nresult\n****END****".format(
+    #             before_input_buffer,
+    #             before_output_buffer,
+    #             after_input_buffer,
+    #             after_output_buffer,
+    #             end_time, output, resutl))
+    #
+    #
+    #         start_time = time.time()
+    #         print("****START RESET OUTPUT test****")
+    #         before_input_buffer = self.ser.in_waiting
+    #         before_output_buffer = self.ser.out_waiting
+    #         output = self.ser.reset_input_buffer()
+    #         # output = self.ser.reset_output_buffer()
+    #         self.ser.write("config\r\n".encode())
+    #         after_input_buffer = self.ser.in_waiting
+    #         after_output_buffer = self.ser.out_waiting
+    #
+    #         resutl = self.ser.read_until(self.end).decode()
+    #         end_time = time.time() - start_time
+    #         print("Bytes in Waiting BEFORE:{}\nBytes Out in Waiting Before:{}\nBytes in Waiting AFTER:{}\n"
+    #               "Bytes Out in Waiting AFTER:{}\nTIME IT TOOK:{}\n output:{}\nresult\n****END****".format(
+    #             before_input_buffer,
+    #             before_output_buffer,
+    #             after_input_buffer,
+    #             after_output_buffer,
+    #             end_time, output, resutl))
+
+    # closing Fucntion
     def reset_variables(self):
         self.memory = ''
         self.counter = 0

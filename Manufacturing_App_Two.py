@@ -24,6 +24,10 @@ class Main_Utility(QMainWindow):
     def __init__(self):
         super().__init__()
         self.current_directory = os.getcwd()
+
+        # self.setFixedSize(WINDOW_WIDTH,WINDOW_HEIGHT)
+        print("content margins:",self.getContentsMargins())
+
         # font configurations
         self.system_font = QApplication.font().family()
         self.label_font = QFont(self.system_font, 12)
@@ -181,7 +185,7 @@ class Main_Utility(QMainWindow):
 
     def initUI(self):
         self.main_central_widget = QWidget()
-        # self.main_central_widget.isFullScreen()
+        # self.main_central_widget.setFixedSize(WINDOW_WIDTH,WINDOW_HEIGHT)
 
         self.gridLayout = QtWidgets.QGridLayout(self.main_central_widget)
         self.gridLayout.setContentsMargins(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -239,6 +243,7 @@ class Main_Utility(QMainWindow):
     def buildScreen(self):
         self.build_central_widget = QWidget(self.main_central_widget)
         self.mainBuild_scrollArea = self.get_ScrollArea(resizable=False, embedded=self.build_central_widget)
+        self.mainBuild_scrollArea.setFixedSize(WINDOW_WIDTH,WINDOW_HEIGHT)
 
         self.tab_window_gridLayout = QtWidgets.QGridLayout(self.build_central_widget)
         self.four_tab_window = QtWidgets.QTabWidget(self.build_central_widget)
@@ -360,7 +365,6 @@ class Main_Utility(QMainWindow):
         self.build_dtc_serial_lbl = QtWidgets.QLabel()
         self.build_dtc_serial_lbl.setFont(self.font(20, 20, True))
 
-        # progressBar_frame = self.create_square_frame()
         self.build_bar = self.create_progress_bar(maximum=160)
         self.progress_bar_counter = 0
 
@@ -396,8 +400,8 @@ class Main_Utility(QMainWindow):
                                               name_ptSize=20, enabled=False)
 
         # connections
-        # self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
-        # self.eeprom_btn.clicked.connect(self.eeprom_call)
+        self.cable_verify_btn.clicked.connect(self.verify_Cable_Test)
+        self.eeprom_btn.clicked.connect(self.eeprom_call)
         # self.final_test_btn.clicked.connect(self.csv)
 
         # progress Bars
@@ -725,7 +729,8 @@ class Main_Utility(QMainWindow):
         pcba_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         pcba_frame.setFrameShadow(QtWidgets.QFrame.Raised)
         pcba_frame.setLineWidth(46)
-        pcba_frame.setGeometry(QtCore.QRect(0,0,300,200))#x,y,width,height
+        pcba_frame.setGeometry(QtCore.QRect(0,0,200,100))#x,y,width,height
+        pcba_frame.setFixedSize(200,100)
 
         pcba_image_lbl = QtWidgets.QLabel(pcba_frame)
         pcba_image_lbl.setGeometry(QtCore.QRect(35, 30, 125, 45))
@@ -733,9 +738,9 @@ class Main_Utility(QMainWindow):
         pcba_image_lbl.setScaledContents(True)
         
         self.hex_number_lbl = QtWidgets.QLabel(pcba_frame)
-        self.hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 300, 16))#15,77,300,16
-        self.hex_number_lbl.setFont(self.font(16, 16, True))
-        self.hex_number_lbl.setFixedWidth(200)
+        self.hex_number_lbl.setGeometry(QtCore.QRect(0, 77, 200, 16))#15,77,300,16
+        self.hex_number_lbl.setFont(self.font(14, 14, True))
+        self.hex_number_lbl.setFixedSize(200,20)
 
         without_family_code_id = stripped_hex[:-3]
         self.unchanged_hex_ids.append(without_family_code_id)
@@ -753,7 +758,7 @@ class Main_Utility(QMainWindow):
         self.hex_number_lbl.setText(self.hex_number[num - 1])
 
         pcba_right_topCorner_id_lbl = QtWidgets.QLabel(pcba_frame)
-        pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 19))
+        pcba_right_topCorner_id_lbl.setGeometry(QtCore.QRect(35, 10, 45, 21))
         pcba_right_topCorner_id_lbl.setFont(self.font(20, 75, True))
 
         if self.pcba_counter == 31:
@@ -774,7 +779,7 @@ class Main_Utility(QMainWindow):
             self.pcba_counter += 1
 
         self.pcba_orderNum = QLabel(pcba_frame)
-        self.pcba_orderNum.setGeometry(QtCore.QRect(144, 10, 50, 20))
+        self.pcba_orderNum.setGeometry(QtCore.QRect(130, 9, 50, 25))#144
         self.pcba_orderNum.setFont(self.font(20, 20, True))
 
         self.pcba_imgs.append(self.pcba_orderNum)
@@ -1185,7 +1190,7 @@ class Main_Utility(QMainWindow):
         total = self.sensor_num[1]+2
 
         for qt in range(0, total):
-            if column % 9 is 0:
+            if column % 9 == 0:
                 row += 1
                 column = 0
             build_box = self.build_img(z, False)
@@ -1200,7 +1205,8 @@ class Main_Utility(QMainWindow):
 
     def build_img(self,orderNum, program):
         cable_frame = QtWidgets.QFrame()
-        cable_frame.setGeometry(QtCore.QRect(170, 60, 161, 51))
+        cable_frame.setGeometry(QtCore.QRect(170, 60, 161, 51))#170,60,161,51
+        # cable_frame.setFixedSize(0,0)
         cable_frame.setFrameShape(QtWidgets.QFrame.NoFrame)
         cable_frame.setFrameShadow(QtWidgets.QFrame.Raised)
         cable_frame.setLineWidth(46)
@@ -1210,8 +1216,8 @@ class Main_Utility(QMainWindow):
 
         if orderNum >= 1:
             cable_temperature = QtWidgets.QLabel(cable_frame)
-            cable_temperature.setGeometry(QtCore.QRect(110,50,50,21))
-            cable_temperature.setText("20.0C"+chr(176))#THIS WAS COMMENTED OUT
+            cable_temperature.setGeometry(QtCore.QRect(110,50,50,23))#x,y,height,width
+            cable_temperature.setText("--.-C"+chr(176))#THIS WAS COMMENTED OUT
             cable_temperature.setFont(self.font(15,15,True))
             if program:
                 self.program_live_temperature_list.append(cable_temperature)
@@ -1257,30 +1263,30 @@ class Main_Utility(QMainWindow):
             length_lbl.setText(self.sensor_length[orderNum-1])
 
         if orderNum >= 1:
-            if orderNum == 1:
+            if orderNum == 1:#protection board
                 if self.has_Marker():
                     marker_lbl = QtWidgets.QLabel(cable_frame)
                     marker_lbl.setText(self.sensor_length[orderNum])
-                    marker_lbl.setGeometry(QtCore.QRect(65,0,41,21))
-                    marker_lbl.setFont(self.font(16,16,True))
-                    length_lbl.setGeometry(QtCore.QRect(9,0,50,21))
-                    length_lbl.setFont(self.font(16,16,True))
+                    marker_lbl.setGeometry(QtCore.QRect(75,0,41,21))#65
+                    marker_lbl.setFont(self.font(14,14,True))
+                    length_lbl.setGeometry(QtCore.QRect(0,0,70,21))
+                    length_lbl.setFont(self.font(15,15,True))
                 else:
-                    length_lbl.setGeometry(QtCore.QRect(35,0,50,21))
-                    length_lbl.setFont(self.font(16,16,True))
+                    length_lbl.setGeometry(QtCore.QRect(0,0,70,21))
+                    length_lbl.setFont(self.font(15,15,True))
                 physical_num_lbl = QtWidgets.QLabel(cable_frame)
                 physical_num_lbl.setText(str(orderNum))
-                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 16))
+                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 20))
                 physical_num_lbl.setFont(self.font(16, 16, True))
 
-            else:
+            else:#The rest of the cables
                 if self.sensor_length[orderNum-1] != 'N/A' or self.sensor_length[orderNum-1] != '-':
                     length_lbl.setText(self.sensor_length[orderNum])
-                length_lbl.setGeometry(QtCore.QRect(40, 0, 50, 21))  # this deals with the label geometry placement
+                length_lbl.setGeometry(QtCore.QRect(20, 0, 90, 21))
                 length_lbl.setFont(self.font(16,16, True))
                 physical_num_lbl = QtWidgets.QLabel(cable_frame)
                 physical_num_lbl.setText(str(orderNum))
-                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 16))
+                physical_num_lbl.setGeometry(QtCore.QRect(130, 0, 41, 20))
                 physical_num_lbl.setFont(self.font(17,17, True))
 
         return cable_frame
@@ -1327,7 +1333,10 @@ class Main_Utility(QMainWindow):
                                                 f_size= 30,f_weight= 30,f_bold= True,g_x= 0,g_y= 0,g_length= 150,g_height= 50)
 
                     elif result[1].get(phy_num) > 90:
-                        lbl = self.create_label(txt= "Position " + str(phy_num + 1) + " Failed: Sensor returns temperature higher than 90 or nothing",
+                        lbl = self.create_label(txt= "Position " + str(phy_num + 1) + " Failed: Sensor returns temperature higher than 90 ",
+                                                f_size= 30,f_weight=30,f_bold=True, g_x=0, g_y=0,g_length=150, g_height=50)
+                    else:
+                        lbl = self.create_label(txt= "Position " + str(phy_num + 1) + " Failed: Sensor returned nothing",
                                                 f_size= 30,f_weight=30,f_bold=True, g_x=0, g_y=0,g_length=150, g_height=50)
                     self.error_messages.append(lbl)
 
@@ -1386,7 +1395,7 @@ class Main_Utility(QMainWindow):
             box[0].setPalette(self.palette(50, 205, 50))
             eeprom_message = QLabel()
             eeprom_message.setText(self.programmed_success_message)
-            eeprom_message.setFont(self.font(10, 10, True))
+            eeprom_message.setFont(self.font(30, 30, True))
             box[1].addWidget(eeprom_message, 0, 0, 11, 11)
 
             # self.program_gridLayout.addWidget(box[0],12,1,2,11)
@@ -1404,7 +1413,133 @@ class Main_Utility(QMainWindow):
             self.prog_err_box_contents[1].addWidget(box[0], 11, 1, 2, 11)
             self.program_gridLayout.addWidget(box[0], 12, 1, 2, 11)
 
+    def update_temperatures(self,temps_list,hex_list,build_test,total_sensors):
+        try:
+            has_protection_board = self.sm.check_eeprom()
+            index = 0
+            if isinstance(has_protection_board,bool):
+                for id in hex_list:
+                    if id not in self.total_sensor_ids:
+                        self.update_list_of_sensor_ids(index = 0,insert_id=True,new_id=id)
+
+            if build_test:
+                if total_sensors == len(temps_list):
+                    for lbl in self.build_live_temperature_list:
+                        lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
+                        index += 1
+                else:
+                    if isinstance(has_protection_board, tuple):
+                        self.build_live_temperature_list[index].setText("--C" + chr(176))
+                        index +=1
+
+                    for key in self.total_sensor_ids:
+                        if key in hex_list:
+                            self.build_live_temperature_list[index].setText(str(temps_list[hex_list.index(key)])[:4]+"C"+chr(176))
+                        else:
+                            self.build_live_temperature_list[index].setText("--C" + chr(176))
+                        index += 1
+            #program test and passed
+            else:
+                if total_sensors == len(temps_list):
+                    for lbl in self.program_live_temperature_list:
+                        lbl.setText(str(temps_list[index])[:4]+"C"+chr(176))
+                        index += 1
+                else:
+                    if isinstance(has_protection_board, tuple):
+                        self.program_live_temperature_list[index].setText("--C" + chr(176))
+                        index +=1
+
+                    for key in self.total_sensor_ids:
+                        if key in hex_list:
+                            self.program_live_temperature_list[index].setText(str(temps_list[hex_list.index(key)])[:4]+"C"+chr(176))
+                        else:
+                            self.program_live_temperature_list[index].setText("--C"+ chr(176))
+                        index += 1
+        except:
+            inform = QMessageBox.warning(self,"No sensors Detected","There was an error, No sensors detected")
+            return
+
+
     # Program Tab Methods
+    def verify_Cable_Test(self):
+        self.prog_err_box_contents[0].setVisible(False)
+        self.parasidic_and_power_test(build_test = False,progress_bar=self.verify_button_prog_bar)
+        self.update_progress_bar(amount=10, progress_bar=self.verify_button_prog_bar)
+
+    def eeprom_call(self):
+        self.update_progress_bar(reset = True,progress_bar = self.eeprom_prog_bar)
+        self.prog_err_box_contents[0].setVisible(False)
+        self.update_progress_bar(amount=10,progress_bar=self.eeprom_prog_bar)
+        eeprom_box = self.get_err_display_box()
+        eeprom_box[0].setVisible(False)
+        self.prog_err_box_contents[1].addWidget(eeprom_box[0])
+
+        metaData_info_list = list()
+        lead = self.file_description[4][1][:-1]
+        metaData_info_list.append("serial @ "+self.meta_data_serial)
+        metaData_info_list.append("lead @ "+lead)
+        sensor_positions_list = self.get_sensor_positions()
+        self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
+
+        if self.continuation_flag:
+            self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
+            self.unchanged_hex_ids = self.cont.get_hex_list(with_whitespace = True)
+            protection_board= self.get_protection_board_id(1)
+            self.unchanged_hex_ids.insert(0,protection_board)
+
+        else:
+            self.update_progress_bar(amount=10, progress_bar=self.eeprom_prog_bar)
+            protection_board = self.get_protection_board_id(1)
+            self.unchanged_hex_ids.insert(0,protection_board)
+            #grab serial num info and lead info
+        self.sm.eeprom_program(metaData_info_list,sensor_positions_list,self.unchanged_hex_ids)
+        self.update_progress_bar(amount=20, progress_bar=self.eeprom_prog_bar)
+
+        self.programmed_success_message = "EEProm Program Successful!"
+        self.final_test_btn.setEnabled(True)
+        self.eeprom_btn.setEnabled(False)
+        self.update_progress_bar(amount=20, progress_bar=self.eeprom_prog_bar)
+        self.print_to_err_box(eeprom_box, 1)
+        self.update_progress_bar(amount=30, progress_bar=self.eeprom_prog_bar)
+        self.successfully_programmed_eeprom_flag = True
+        # self.print_to_err_box(self.prog_err_box_contents[1],1)
+
+    def get_sensor_positions(self):
+        sensor_positions = list()
+        specs = self.file_specs.copy()
+        specs.pop(0)
+        specs.pop(0)
+        specs.pop(0)
+
+        sensor_positions.append("0.0")
+        for position in specs:
+            sensor_positions.append(position[2][:-1])
+        sensor_positions.pop()
+        return sensor_positions
+
+    def get_protection_board_id(self, key):
+        '''cycle through all ids and remove them if they are in the previous list, then return the remaining one.'''
+        if key is 0:
+            ids = self.sm.get_hex_ids()
+            for id in self.final_physical_order:
+                if id in ids:
+                    ids.remove(id)
+            return ids[0]
+        else:
+            id_list = self.sm.get_unchanged_ids()
+            for id in self.unchanged_hex_ids:
+                if id in id_list:
+                    id_list.remove(id)
+                # elif id in self.unchanged_hex_ids:
+            return id_list[0]
+
+
+
+
+
+
+
+
 
     # Utility Functions
     def font(self, ptSize, weigth, bold):
@@ -1997,6 +2132,7 @@ class Main_Utility(QMainWindow):
         self.pcba_frame_Dict.clear()
         self.unchanged_hex_ids.clear()
         self.pcba_memory.clear()
+        self.sensor_length.clear()
         self.physical_num = 1
         # self.lsb = -1
         self.counter = 1
