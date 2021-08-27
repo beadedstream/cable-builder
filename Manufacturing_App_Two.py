@@ -104,6 +104,7 @@ class Main_Utility(QMainWindow):
 
         self.pcba_imgs = list()
         self.pcba_frame_Dict = dict()
+        self.report_selected_flag = False
         self.continuation_flag = False
         self.pcba_memory = list()
         self.pcba_frame_Highlight = list()
@@ -258,7 +259,7 @@ class Main_Utility(QMainWindow):
         self.tab_window_gridLayout.setRowStretch(2, 1)
         self.return_btn.clicked.connect(self.reset_application)  # we might not need to reset it .
 
-        # prep tab
+        #----------------------------------------------PREP TAB---------------------------------------------------------
         self.prep_tab = QtWidgets.QWidget()
         self.prep_gridLayout = QtWidgets.QGridLayout()
         self.prep_gridLayout.setSpacing(10)
@@ -269,6 +270,7 @@ class Main_Utility(QMainWindow):
         self.file_btn = self.get_Button(b_x=10, b_y=10, length=110, height=75, name="Select File", name_ptSize=20,
                                         name_wight=20, name_bold=True)
         self.file_btn.clicked.connect(self.prep_information)
+        # self.file_btn.clicked.connect(self.sm.parse_temps_call)
 
         self.prep_gridLayout.addWidget(self.file_btn, 0, 0)
         self.prep_gridLayout.addWidget(self.prep_scrollArea, 2, 1, 7, 7)
@@ -276,7 +278,7 @@ class Main_Utility(QMainWindow):
         self.prep_gridLayout.setColumnStretch(8, 0)
         self.prep_tab.setLayout(self.prep_gridLayout)
 
-        # scan tab window
+        # ------------------------------------------------SCAN TAB -------------------------------------------------
         self.scan_tab = QtWidgets.QWidget()
         self.scan_tab.setEnabled(False)
         self.scan_gridLayout = QtWidgets.QGridLayout()
@@ -293,8 +295,7 @@ class Main_Utility(QMainWindow):
         self.dtc_serial_lbl.setFont(self.font(20, 20, True))
 
         # scan btn
-        self.start_button = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nScan\n", name_ptSize=20,
-                                            name_wight=20)
+        self.start_button = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nScan\n", name_ptSize=20,name_wight=20)
         self.start_button.clicked.connect(self.start_scan)
         # Stop scan btn
         self.stop_scan_btn = self.get_Button(b_x=0, b_y=0, length=100, height=100, name="\nSTOP\n", name_ptSize=20,
@@ -347,7 +348,7 @@ class Main_Utility(QMainWindow):
         self.scan_gridLayout.setRowStretch(8, 1)
         self.scan_tab.setLayout(self.scan_gridLayout)
 
-        # build tab
+        # -----------------------BUILD TAB-------------------------------------------------------------
         self.build_tab = QtWidgets.QWidget()
         self.build_tab.setEnabled(False)
         self.build_gridLayout = QtWidgets.QGridLayout()
@@ -380,7 +381,7 @@ class Main_Utility(QMainWindow):
         self.cable_group = QGroupBox()
         self.cable_group.setLayout(self.cable_grid)
 
-        # program tab
+        #----------------------------------------------PROGRAM TAB----------------------------------------------------
         self.program_tab = QtWidgets.QWidget()
         self.program_tab.setEnabled(False)
 
@@ -460,6 +461,14 @@ class Main_Utility(QMainWindow):
         # if self.sm.check_port() == False:
         #     return
         try:
+            if self.report_selected_flag:
+                self.reset_prep_info()
+                self.desc_group = QGroupBox()
+                self.prep_gridLayout.addWidget(self.desc_group, 1, 1)
+                self.report_selected_flag = False
+                self.prep_information()
+                return
+
             if self.prep_information_flag:
                 self.reset_prep_info()
 
@@ -516,7 +525,6 @@ class Main_Utility(QMainWindow):
             pcba_build_display.setText(protection_sensor_text)
             pcba_program_display.setText(protection_sensor_text)
 
-
             pcba_scan_display.setFont(self.font(20, 45, True))
             pcba_build_display.setFont(self.font(20, 15, True))
             pcba_program_display.setFont(self.font(20, 15, 45))
@@ -525,7 +533,7 @@ class Main_Utility(QMainWindow):
             self.build_gridLayout.addWidget(pcba_build_display, 0, 1)
             self.program_gridLayout.addWidget(pcba_program_display, 0, 1)
 
-            desc_lbl = []
+            desc_lbl = list()
             for desc in range(len(file_desc)):
                 desc_lbl.append(QLabel(file_desc[desc][0]))
                 desc_lbl.append(QLabel(file_desc[desc][1]))
@@ -605,6 +613,7 @@ class Main_Utility(QMainWindow):
 
             self.desc_group = QGroupBox()
             self.desc_group.setLayout(desc_layout)
+            self.report_selected_flag = True
 
             # content
             ran = 1
@@ -687,7 +696,7 @@ class Main_Utility(QMainWindow):
         self.build_gridLayout.addWidget(empty, 0, 1)
         self.program_gridLayout.addWidget(empty, 0, 1)
 
-    # -Scan Tab Methods
+    # ----------------------------------------Scan Tab Methods------------------------------------------------------
     def start_scan(self):
         try:
             self.switch_btn(False)
@@ -1076,7 +1085,7 @@ class Main_Utility(QMainWindow):
     def noButton(self):
         self.message.close()
 
-    # -Build Tab Methods
+    # --------------------------------------------Build Tab Methods----------------------------------------------------
     def para_pwr_test(self):
         self.parasidic_and_power_test(build_test = True,progress_bar=self.build_bar)
 
@@ -1460,7 +1469,7 @@ class Main_Utility(QMainWindow):
             return
 
 
-    # Program Tab Methods
+    # ---------------------------------------------Program Tab Methods------------------------------------------------
     def verify_Cable_Test(self):
         self.prog_err_box_contents[0].setVisible(False)
         self.parasidic_and_power_test(build_test = False,progress_bar=self.verify_button_prog_bar)
@@ -1533,15 +1542,7 @@ class Main_Utility(QMainWindow):
                 # elif id in self.unchanged_hex_ids:
             return id_list[0]
 
-
-
-
-
-
-
-
-
-    # Utility Functions
+    #--------------------------------------------------- Utility Functions----------------------------------------------
     def font(self, ptSize, weigth, bold):
         font = QtGui.QFont()
         font.setFamily("Times New Roman")  # System
@@ -1808,7 +1809,7 @@ class Main_Utility(QMainWindow):
             QMessageBox.information(self, "failed to Save Temp file", "There was an error trying to save the temp file")
             self.report_fail_flag = True
 
-    # file setting Modules
+    # ------------------------------------------file setting Modules----------------------------------------------------
     def configuration(self):
 
         FILE_BTN_WIDTH = 30
@@ -2052,7 +2053,7 @@ class Main_Utility(QMainWindow):
                 self.ra_mold[mold[0][-1]] = False
             counter += 1
 
-    # port configuration Modules
+    # -----------------------------------------port configuration Modules-----------------------------------------------
     def populate_ports(self):
         """Doc string goes here."""
         ports = fsm.SerialManager.scan_ports()
@@ -2111,6 +2112,7 @@ class Main_Utility(QMainWindow):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
 
+    # closing functions
     def reset_application(self):
         """Resetting variables from the init func"""
         self.update_progress_bar(amount=20, progress_bar=self.final_test_prog_bar)
