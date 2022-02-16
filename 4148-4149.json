@@ -1,0 +1,703 @@
+[
+	{
+		"_id": "61f3403988178b806852812d",
+		"id": 2834,
+		"cable": [
+			{
+			"component": "xlr",
+			"mold": "xlr",
+			"position": 0,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard"
+			},
+			{
+			"component": "no mlink",
+			"mold": "none",
+			"position": 10,
+			"length": 0,
+			"moldColor": "none",
+			"cableColor": "Armored",
+			"conduit": "flex"
+			},
+			{
+			"component": "zero marker",
+			"mold": "none",
+			"position": 10,
+			"length": 0.17,
+			"moldColor": "none",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Protection / Sensor 1",
+			"mold": "straight",
+			"position": 10.17,
+			"length": 0.83,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 2",
+			"mold": "straight",
+			"position": 11,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 3",
+			"mold": "straight",
+			"position": 12,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 4",
+			"mold": "straight",
+			"position": 13,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 5",
+			"mold": "straight",
+			"position": 14,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 6",
+			"mold": "straight",
+			"position": 15,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 7",
+			"mold": "straight",
+			"position": 16,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 8",
+			"mold": "straight",
+			"position": 17,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 9",
+			"mold": "straight",
+			"position": 18,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 10",
+			"mold": "straight",
+			"position": 19,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 11",
+			"mold": "straight",
+			"position": 20,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 12",
+			"mold": "straight",
+			"position": 21,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 13",
+			"mold": "straight",
+			"position": 22,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 14",
+			"mold": "straight",
+			"position": 23,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 15",
+			"mold": "straight",
+			"position": 24,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 16",
+			"mold": "straight",
+			"position": 25,
+			"length": 1,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 17",
+			"mold": "straight",
+			"position": 26,
+			"length": 2,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 18",
+			"mold": "straight",
+			"position": 28,
+			"length": 2,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 19",
+			"mold": "straight",
+			"position": 30,
+			"length": 5,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 20",
+			"mold": "straight",
+			"position": 35,
+			"length": 5,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 21",
+			"mold": "straight",
+			"position": 40,
+			"length": 5,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 22",
+			"mold": "straight",
+			"position": 45,
+			"length": 5,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 23",
+			"mold": "straight",
+			"position": 50,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 24",
+			"mold": "straight",
+			"position": 60,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 25",
+			"mold": "straight",
+			"position": 70,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 26",
+			"mold": "straight",
+			"position": 80,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 27",
+			"mold": "straight",
+			"position": 90,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 28",
+			"mold": "straight",
+			"position": 100,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			},
+			{
+			"component": "Sensor 29",
+			"mold": "End Mold",
+			"position": 110,
+			"length": 10,
+			"moldColor": "blue",
+			"cableColor": "Standard",
+			"conduit": "pex"
+			}
+		],
+		"units": "ft",
+		"locked": true,
+		"name": "110ft., 29 sensor cable, armored lead",
+		"org": {
+			"id": 17
+		},
+		"project": {
+			"id": 10341
+		},
+		"productionComment": "Cable will be encased in PEX with only 5ft of Flex and 5ft of bare cable.",
+		"priceChart": {
+			"sensor": 195,
+			"Heatshrink": 8,
+			"No Heatshrink": 0,
+			"standardCable": {
+			"ft": 3,
+			"in": 0.25,
+			"m": 9.85,
+			"cm": 0.0985
+			},
+			"armoredCable": {
+			"ft": 6,
+			"in": 0.5,
+			"m": 19.7,
+			"cm": 0.197
+			},
+			"xlr": 195,
+			"bare": 0,
+			"baseCost": {
+			"ft": {
+				"<2000": 300,
+				">=2000": 450
+			},
+			"in": {
+				"<24000": 300,
+				">=24000": 450
+			},
+			"m": {
+				"<610": 300,
+				">=610": 450
+			},
+			"cm": {
+				"<6100": 300,
+				">=6100": 450
+			}
+			},
+			"packaging": {
+			"Cardboard Box": 0,
+			"Pallet": 200,
+			"Action Packer": 150,
+			"Spool": 250
+			},
+			"pex": {
+			"ft": 2.5,
+			"in": 0.208,
+			"m": 8.2,
+			"cm": 0.082
+			},
+			"pexSand": {
+			"ft": 8.5,
+			"in": 0.708,
+			"m": 27.95,
+			"cm": 0.2795
+			},
+			"flex": {
+			"ft": 4,
+			"in": 0.708,
+			"m": 12,
+			"cm": 0.12
+			},
+			"discount": {
+			"amount": 20,
+			"type": "flat",
+			"raw": "20"
+			},
+			"pexFittings": 70,
+			"flexFittings": 50
+		},
+		"packaging": "Cardboard Box",
+		"heatshrink": "No Heatshrink",
+		"connector": "xlr",
+		"mlink": "no mlink",
+		"ts": {
+			"created": "2022-01-28T00:59:34.846Z",
+			"updated": "2022-01-28T01:00:41.175Z"
+		},
+		"serial": [
+			4148,
+			4149
+		],
+		"v": 1643331641175
+	},
+	{
+	"_id": "6205b1d9fa94c8eeb8d8a528",
+	"id": 2847,
+	"cable": [
+		{
+		"component": "xlr",
+		"mold": "xlr",
+		"position": 0,
+		"length": 20,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "no mlink",
+		"mold": "none",
+		"position": 20,
+		"length": 0,
+		"moldColor": "none",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Protection / Sensor 1",
+		"mold": "straight",
+		"position": 20,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 2",
+		"mold": "straight",
+		"position": 22,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 3",
+		"mold": "straight",
+		"position": 24,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 4",
+		"mold": "straight",
+		"position": 26,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 5",
+		"mold": "straight",
+		"position": 28,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 6",
+		"mold": "straight",
+		"position": 30,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 7",
+		"mold": "straight",
+		"position": 32,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 8",
+		"mold": "straight",
+		"position": 34,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 9",
+		"mold": "straight",
+		"position": 36,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 10",
+		"mold": "straight",
+		"position": 38,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 11",
+		"mold": "straight",
+		"position": 40,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 12",
+		"mold": "straight",
+		"position": 42,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 13",
+		"mold": "straight",
+		"position": 44,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 14",
+		"mold": "straight",
+		"position": 46,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 15",
+		"mold": "straight",
+		"position": 48,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 16",
+		"mold": "straight",
+		"position": 50,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 17",
+		"mold": "straight",
+		"position": 52,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 18",
+		"mold": "straight",
+		"position": 54,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 19",
+		"mold": "straight",
+		"position": 56,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 20",
+		"mold": "straight",
+		"position": 58,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 21",
+		"mold": "straight",
+		"position": 60,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 22",
+		"mold": "straight",
+		"position": 62,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 23",
+		"mold": "straight",
+		"position": 64,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 24",
+		"mold": "straight",
+		"position": 66,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 25",
+		"mold": "straight",
+		"position": 68,
+		"length": 2,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		},
+		{
+		"component": "Sensor 26",
+		"mold": "straight",
+		"position": 70,
+		"length": 0,
+		"moldColor": "blue",
+		"cableColor": "Standard"
+		}
+	],
+	"units": "ft",
+	"locked": true,
+	"name": "Rebuild of 1402 - 50ft Inst, 20ft Lead, 26 Sensors",
+	"org": {
+		"id": 40
+	},
+	"project": {
+		"id": 10475
+	},
+	"productionComment": "Rebuild of 1402, repaired in shop and added EEPROM",
+	"priceChart": {
+		"sensor": 195,
+		"Heatshrink": 8,
+		"No Heatshrink": 0,
+		"standardCable": {
+		"ft": 3,
+		"in": 0.25,
+		"m": 9.85,
+		"cm": 0.0985
+		},
+		"armoredCable": {
+		"ft": 6,
+		"in": 0.5,
+		"m": 19.7,
+		"cm": 0.197
+		},
+		"xlr": 195,
+		"bare": 0,
+		"baseCost": {
+		"ft": {
+			"<2000": 300,
+			">=2000": 450
+		},
+		"in": {
+			"<24000": 300,
+			">=24000": 450
+		},
+		"m": {
+			"<610": 300,
+			">=610": 450
+		},
+		"cm": {}
+		},
+		"packaging": {
+		"Cardboard Box": 0,
+		"Pallet": 200,
+		"Action Packer": 150,
+		"Spool": 250
+		},
+		"pex": {
+		"ft": 2.5,
+		"in": 0.208,
+		"m": 8.2,
+		"cm": 0.082
+		},
+		"pexSand": {
+		"ft": 8.5,
+		"in": 0.708,
+		"m": 27.95,
+		"cm": 0.2795
+		},
+		"flex": {
+		"ft": 4,
+		"in": 0.708,
+		"m": 12,
+		"cm": 0.12
+		},
+		"discount": {
+		"amount": 0,
+		"type": "flat",
+		"raw": "0"
+		},
+		"pexFittings": 70,
+		"flexFittings": 50
+	},
+	"packaging": "Cardboard Box",
+	"heatshrink": "No Heatshrink",
+	"connector": "xlr",
+	"mlink": "no mlink",
+	"ts": {
+		"created": "2022-02-11T00:45:30.653Z",
+		"updated": "2022-02-11T00:46:17.402Z"
+	},
+	"serial": [
+		4151
+	],
+	"v": 1644540377402
+	}
+]
