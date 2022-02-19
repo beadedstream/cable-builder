@@ -4,6 +4,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QPushButton, QMessageBox, QFileDialog
 import json
 import os
+from lib.file_handler import write_cable_to_json
 
 class DetailsTab(QWidget):
 	def __init__(self):
@@ -53,13 +54,13 @@ class DetailsTab(QWidget):
 	def read_from_api(self):
 		pass
 
-	def parse_cable_obj(self, cable_obj):
+	def parse_cable_obj(self, cable_obj, serial_num):
 		self.current_ids = cable_obj["serial"]
 
 		cable:dict = {}
 		cable["sensors"] = []
 		cable["units"] = cable_obj["units"]
-		cable["serials"] = cable_obj["serial"]
+		cable["serial"] = serial_num
 		cable["connector"] = cable_obj["cable"][0]["component"]
 		cable["lead"] = cable_obj["cable"][0]["length"]
 		cable["total_length"] = cable["lead"]
@@ -90,11 +91,11 @@ class DetailsTab(QWidget):
 				cable["total_length"] = component["position"]
 				if component["mold"].lower().find("end") == -1:
 					err_txt = "Could not find end mold for cable with serial(s)"
-					for x in cable["serials"]:
+					for x in cable_obj["serial"]:
 						err_txt += " " + str(x)
 					QMessageBox.critical(self, "Missing End Mold", err_txt)
 
-		self.write_cable_to_file(cable)
+		write_cable_to_json(cable)
 		self.load_cable_details(cable)
 
 	def load_cable_details(self, cable):
@@ -133,11 +134,3 @@ class DetailsTab(QWidget):
 			self.mold_text.setText("marker"+ self.mold_text.text())
 			self.section_text.setText(str(cable["zero_marker_length"]) + self.section_text.text())
 			self.type_text.setText("------" + self.type_text.text())
-
-	def write_cable_to_file(self, data:dict):
-		cable_directory = "."
-		# if not os.path.isdir():
-		# 	os.mkdir(cable_directory)
-
-		with open(cable_directory +"/current_cable.json", 'w') as f:
-			json.dump(data, f, indent=4)

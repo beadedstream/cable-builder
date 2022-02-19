@@ -271,6 +271,17 @@ class serial_605(usb_serial):
 
 	#### READ COMMANDS ####
 
+	def find_sensors_on_port(self, slot:int, port:int):
+		data = self.send_command(calibration_cmd_prefix + " find " + str(slot) + " " + str(port))
+
+		ids: list = []
+		for line in data:
+			if line.find("id: ") != -1:
+				ids.append(line.replace("id: ", "").replace('\n', ""))
+
+		self.reverse_ids(ids)
+		return ids
+
 	def read_ids(self, serial:str):
 		data = self.send_command(calibration_cmd_prefix + " ids " + serial)
 
@@ -400,7 +411,6 @@ class serial_605(usb_serial):
 
 	def set_clock(self):
 		utc_seconds = int(datetime.utcnow().timestamp())
-
 		self.send_command("app set_time " + str(utc_seconds))
 
 if __name__ == "__main__":

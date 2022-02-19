@@ -2,25 +2,24 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from components.cable_component import CableComponent
-import json
+from lib.file_handler import load_json_cable
+from serial_605 import serial_605
 
 class BuildTab(QWidget):
-	def __init__(self):
+	def __init__(self, shell_605):
 		super(BuildTab, self).__init__()
 		uic.loadUi("ui/tabs/build_tab.ui", self)
+		self.shell:serial_605 = shell_605
 		self.test_cable_btn.clicked.connect(self.test_cable)
 
-		with open("current_cable.json") as f:
-			self.cable = json.load(f)
-
+		self.cable = load_json_cable()
 		self.sensor_widgets:list = []
 		self.generate_cable()
-
 
 	def generate_cable(self):
 
 		h_layout = QHBoxLayout()
-		h_layout.addWidget(CableComponent("", self.cable["connector"] + ".jpg"))
+		h_layout.addWidget(CableComponent("", "bare.jpg"))
 		first_sensor = self.cable["sensors"][0]
 
 		cable_color = ""
@@ -65,6 +64,38 @@ class BuildTab(QWidget):
 			self.cable_layout.addLayout(h_layout)
 		
 	def test_cable(self):
+		info_on_cables =  self.shell.initialize_cables()
+
+		eeprom_id:str
+		extra_sensor_id:str
+
+		for cable_info in info_on_cables():
+			if cable_info["port"] == '2' and cable_info["slot"] == 1:
+				if cable_info["has_eeprom"]:
+					if self.cable["is_mlink"] or self.cable["sensors"][0].lower().find("protection") != -1:
+						self.update_response_text("This cable is not suppose to have an EEProm", is_err = True)
+						return
+					
+				else:
+					if self.cable["is_mlink"]:
+						self.update_response_text("Missing MLink board", is_err = True)
+						return
+					elif self.cable["sensors"][0].lower().find("protection") != -1:
+						self.update_response_text("Missing protection board", is_err = True)
+						return
+
+				if int(cable_info["sensors"]) > len(self.cable["sensors"]):
+					self.update_response_text(cable_info["sensors"] + " sensors found on cable. Only " + str(len(self.cable["sensors"])) + " needed", is_err = True)
+					return
+				if int(cable_info["sensors"]) < len(self.cable["sensors"]):
+					self.update_response_text("Too many sensors found on cable", is_err = True)
+					return
+			else:
+				self.update_response_text("Cable not found. Make sure to plug cable into port 2", is_err = True)
+				return
+		
+		self.shell.read_sensor_temperatures(self.cable["serial"])
+
 		for widget in self.sensor_widgets:
 			widget.set_label("0.0C")
 		self.update_response_text("Pass")

@@ -2,19 +2,19 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtGui import QFont, QPalette
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from components.cable_component import CableComponent
-import json
+from lib.file_handler import load_json_cable
+from serial_605 import serial_605
 
 class ProgramTab(QWidget):
-	def __init__(self):
+	def __init__(self, shell_605):
 		super(ProgramTab, self).__init__()
 		uic.loadUi("ui/tabs/program_tab.ui", self)
+		self.shell:serial_605 = shell_605
 		self.cable_components = []
 
 		self.verify_cable_btn.clicked.connect(self.verify_cable)
 		self.write_to_eeprom_btn.clicked.connect(self.write_to_eeprom)
-
-		with open("current_cable.json") as f:
-			self.cable = json.load(f)
+		self.cable = load_json_cable()
 
 		self.sensor_widgets:list = []
 		self.generate_built_cable()

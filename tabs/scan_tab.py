@@ -1,10 +1,11 @@
 from PyQt5 import uic
+from PyQt5.QtCore import QTimer, QEventLoop
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QTableWidget, QGridLayout, QMessageBox
+from PyQt5.QtWidgets import QWidget, QTableWidget, QGridLayout, QMessageBox, QPushButton
 from serial_605 import serial_605
 from components.sensor_component import SensorComponent
 from random import randrange
-from time import sleep
+from lib.file_handler import load_json_cable
 
 class ScanTab(QWidget):
 	def __init__(self, shell_605):
@@ -12,55 +13,74 @@ class ScanTab(QWidget):
 		uic.loadUi("ui/tabs/scan_tab.ui", self)
 		self.shell:serial_605 = shell_605
 		self.sensor_ids:list = []
-		self.total_sensors = 0
+
+		cable = load_json_cable()["sensors"]
+		self.total_sensors:int = len(cable["sensors"])
+		if cable["sensors"][0].lower().find("protection") != -1:
+			self.total_sensors -= 1
+
+		del cable
+
 		self.img_folder = "components/images/PCBA"
 		self.tray_char = 'A'
 		self.tray_num = 0
 		self.sensors_scanned = 0
 
-		self.scan_sensors_btn.clicked.connect(self.add_sensor)
+		self.scan_sensors_btn:QPushButton
+
+		self.scan_sensors_btn.clicked.connect(self.scan_sensors)
 		self.sort_sensors_btn.clicked.connect(self.sort_sensors)
 		self.replace_sensor_btn.clicked.connect(self.replace_sensor)
+		
+		self.sort_sensors_btn.setEnabled(False)
+		self.replace_sensor_btn.setEnabled(False)
 		#self.sensor_table.clicked.connect(self.replace_sensor)
 
-		# q = QTableWidget()
-		# q.removeCellWidget()
-
 	def scan_sensors(self):
+		
+		i:int = 0
+		last_sensor:str = ""
 
-		# TODO: create a 605 method for reading sensor ids from a specific port without reinitialing cables
-		ids:list = self.shell.read_ids(1,1)
+		self.scan_sensors_btn.setEnabled(False)
 
-		iint = 0
-		while i < (self.total_sensors - 1):
+		while i < (self.total_sensors):
+			ids:list = self.shell.find_sensors_on_port(1,1)
 
 			if len(ids) > 1:
-				QMessageBox.critical(self, "Sensor Not Selected", "Need to select a sensor before repacing one")
-				return
+				QMessageBox.critical(self, "Too many ids", "Found multiple sensor ids. Can only scan one sensor at a time")
 
-			if ids == None:
+			elif len(ids) == 0:
 				print("No sensors found on cable. Re-scanning...")
-				return
 
-			id = ids[0]
+			elif ids[0] == last_sensor:
+				print("No sensors found on cable. Re-scanning...")
 
-			if len(id) == 16 and id[-2:] == '28':
-				self.add_sensor(id[2:-2])
+			elif len(ids[0]) == 16 and ids[0][-2:] == '28':
+
+				if ids[0] in self.sensor_ids:
+					QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " already scanned.")
+				else:
+					last_sensor = ids[0]
+					self.add_sensor(ids[0])
+					i+=1
 			else:
-				QMessageBox.critical(self, "Invalid Id found", "Sensor with id " + id + " found.")
+				QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " found.")
 
-			i+=1
-			sleep(2)
+			loop = QEventLoop()
+			QTimer.singleShot(500, loop.quit)
+			loop.exec()
 
-	def add_sensor(self):
-		id = self.generate_id()
-		readable_id = id[0] + id[1]
-		for i in range(2, len(id), 2):
-			readable_id += " " + id[i] + id[i+1]
-		comp = SensorComponent(self.tray_char+str(self.tray_num+1), readable_id)
+		self.sort_sensors_btn.setEnabled(True)
+		self.replace_sensor_btn.setEnabled(True)
+
+	def add_sensor(self, id):
+
+		#id = self.generate_id()
+		comp = SensorComponent(self.tray_char + str(self.tray_num + 1), self.format_id(id))
 
 		self.sensor_table.horizontalHeader().setDefaultSectionSize(comp.get_img_width())
-		self.sensor_table.setCellWidget(int(self.sensors_scanned / 6), self.sensors_scanned % 6, comp)
+		self.sensor_table.setCellWidget(int(self.sensors_scanned / self.sensor_table.columnCount()), self.sensors_scanned % self.sensor_table.columnCount(), comp) #row, col, widget
+
 		self.sensors_scanned += 1
 		self.tray_num += 1
 		if self.tray_num == 30:
@@ -68,6 +88,7 @@ class ScanTab(QWidget):
 			self.tray_char = chr(ord(self.tray_char) + 1)
 
 		self.sensor_ids.append(id)
+		print("sensor with id "+ id + " added")
 
 	def generate_id(self):
 		id = "000000"
@@ -108,7 +129,7 @@ class ScanTab(QWidget):
 		print(reversed_hex_totals)
 
 		for i, total in enumerate(reversed_hex_totals):
-			self.sensor_table.cellWidget(int(i / 6), i % 6).set_order_number(str(total[1]))
+			self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount()).set_order_number(str(total[1]))
 
 		self.sort_sensors_btn.setEnabled(False)
 		# return [[new_sen_order[i], sorted_ids[i]] for i in range(len(reversed_hex_totals))]
@@ -120,7 +141,31 @@ class ScanTab(QWidget):
 			QMessageBox.critical(self, "Sensor Not Selected", "Need to select a sensor before repacing one")
 			return
 
-		cell_widget.set_id("00 00 00 12 A6 3C")
+		while True:
+			ids:list = self.shell.find_sensors_on_port(1,1)
+
+			if len(ids) > 1:
+				QMessageBox.critical(self, "Too many ids", "Found multiple sensor ids. Can only scan one sensor at a time")
+
+			elif len(ids) == 0:
+				print("No sensors found on cable. Re-scanning...")
+
+			elif len(ids[0]) == 16 and ids[0][-2:] == '28' and ids[0][:2] == '00':
+
+				if ids[0] in self.sensor_ids:
+					QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " already scanned.")
+				else:
+					cell_widget.set_id(self.format_id(ids[0]))
+					sensor_number = (self.sensor_table.currentRow() * self.sensor_table.columnCount()) + (self.sensor_table.currentColumn() + 1)
+					self.sensor_ids[sensor_number - 1] = ids[0]
+					print(self.sensor_ids)
+					return
+			else:
+				QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " found.")
+
+			loop = QEventLoop()
+			QTimer.singleShot(500, loop.quit)
+			loop.exec()
 
 	def delete_sensor(self):
 
@@ -130,5 +175,17 @@ class ScanTab(QWidget):
 
 		self.sensor_table.removeCellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn())
 
+	
 	def update_sensor_total(self, sensor_num):
 		self.total_sensors = sensor_num
+
+	def format_id(self, id):
+
+		formatted_id = id[2] + id[3]
+		# removes crc and family code
+		for i in range(4, len(id)-2, 2):
+			formatted_id += " " + id[i] + id[i+1]
+
+		return formatted_id
+
+	
