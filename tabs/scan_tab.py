@@ -4,7 +4,6 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QTableWidget, QGridLayout, QMessageBox, QPushButton
 from serial_605 import serial_605
 from components.sensor_component import SensorComponent
-from random import randrange
 from lib.file_handler import load_json_cable, update_json_field
 
 class ScanTab(QWidget):
@@ -12,6 +11,7 @@ class ScanTab(QWidget):
 		super(ScanTab, self).__init__()
 		uic.loadUi("ui/tabs/scan_tab.ui", self)
 		self.shell:serial_605 = shell_605
+		self.tab_widget = parent
 		self.sensor_ids:list = []
 
 		sensors = load_json_cable()["sensors"]
@@ -21,20 +21,23 @@ class ScanTab(QWidget):
 
 		del sensors
 
+		t = QTableWidget()
+
 		self.img_folder = "components/images/PCBA"
 		self.tray_char = 'A'
 		self.tray_num = 0
 		self.sensors_scanned = 0
 
-		self.scan_sensors_btn:QPushButton
-
 		self.scan_sensors_btn.clicked.connect(self.scan_sensors)
 		self.sort_sensors_btn.clicked.connect(self.sort_sensors)
 		self.replace_sensor_btn.clicked.connect(self.replace_sensor)
-		
+		self.left_btn.clicked.connect(lambda: self.left_right_select(True))
+		self.right_btn.clicked.connect(lambda: self.left_right_select(False))
+
 		self.sort_sensors_btn.setEnabled(False)
 		self.replace_sensor_btn.setEnabled(False)
-		self.tab_widget = parent
+		self.right_btn.setEnabled(False)
+		self.left_btn.setEnabled(False)
 		#self.sensor_table.clicked.connect(self.replace_sensor)
 
 	def scan_sensors(self):
@@ -80,7 +83,6 @@ class ScanTab(QWidget):
 
 	def add_sensor(self, id):
 
-		#id = self.generate_id()
 		comp = SensorComponent(self.tray_char + str(self.tray_num + 1), self.format_id(id))
 
 		self.sensor_table.horizontalHeader().setDefaultSectionSize(comp.get_img_width())
@@ -94,13 +96,6 @@ class ScanTab(QWidget):
 
 		self.sensor_ids.append(id)
 		print("sensor with id "+ id + " added")
-
-	def generate_id(self):
-		id = "000000"
-		for i in range(6):
-			id += hex( randrange(16) )[-1]
-
-		return id
 
 	def sort_sensors(self, ignore_sen = 0):
 		# stores a list of reversed hex totals and the id that generated it
@@ -132,20 +127,27 @@ class ScanTab(QWidget):
 
 		for i, id in enumerate(self.sensor_ids):
 			# displaying the order number of each sensor
-			sensor_widget = self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount())
+			current_row = int(i / self.sensor_table.columnCount())
+			current_col = i % self.sensor_table.columnCount()
+			sensor_widget = self.sensor_table.cellWidget(current_row, current_col)
+
 			for k in range(len(sorted_totals)):
 				if (id == sorted_totals[k][1]):
+					if k == 0:
+						self.sensor_table.setCurrentCell(current_row, current_col)
 					sensor_widget.set_order_number(str(k+1))
 					break
 
 		# updated ids to be in sorted order
 		self.sensors_ids = [ t[1] for t in sorted_totals ]
 		update_json_field("sensor_ids", self.sensor_ids)
-		self.sort_sensors_btn.setEnabled(False)
+		
 
 		# enabling build and program tabs again
 		self.tab_widget.setTabEnabled(2, True)
 		self.tab_widget.setTabEnabled(3, True)
+		self.sort_sensors_btn.setEnabled(False)
+		self.right_btn.setEnabled(True)
 
 	def replace_sensor(self):
 		cell_widget = self.sensor_table.cellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn())
@@ -183,24 +185,33 @@ class ScanTab(QWidget):
 			QTimer.singleShot(500, loop.quit)
 			loop.exec()
 
-	def left_right_select(self):
-		current_sensor_num = self.sensor_table.cellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn()).cell_widget.get_order_number()
-		direction = -1
+	def left_right_select(self, is_left:bool):
+		selected_sensor_num = int(self.sensor_table.cellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn()).get_order_number())
+
+		direction = 1
+		if is_left:
+			direction = -1
 
 		for i in range(len(self.sensor_ids)):
 
-			sensor_widget = self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount())
+			row = int(i / self.sensor_table.columnCount())
+			col = i % self.sensor_table.columnCount()
+			sensor_widget = self.sensor_table.cellWidget(row, col)
+			order_num = int(sensor_widget.get_order_number())
 
-			if sensor_widget.get_order_number() == current_sensor_num + direction:
+			if order_num == selected_sensor_num + direction:
 
-				if i+1 == len(self.sensor_ids):
-					self.righ_btn.setEnabled(False)
+				self.sensor_table.setCurrentCell(row, col)
+
+				if order_num == len(self.sensor_ids):
+					self.right_btn.setEnabled(False)
 					self.left_btn.setEnabled(True)
-				elif i == 0:
+				elif order_num == 1:
 					self.left_btn.setEnabled(False)
-					self.righ_btn.setEnabled(True)
-
-		self.left_btn
+					self.right_btn.setEnabled(True)
+				else:
+					self.left_btn.setEnabled(True)
+					self.right_btn.setEnabled(True)
 
 	def delete_sensor(self):
 
@@ -221,5 +232,3 @@ class ScanTab(QWidget):
 			formatted_id += " " + id[i] + id[i+1]
 
 		return formatted_id
-
-	
