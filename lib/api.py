@@ -199,7 +199,6 @@ class API:
 
         return valid_sensors
 
-
 if __name__ == "__main__":
     api = API()
     #print(api.get_sensors_by_serial("4004"))

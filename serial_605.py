@@ -1,7 +1,8 @@
 from enum import unique
 from queue import Empty
 import time
-from lib.helper import close_application, write_to_log
+from lib.helper import write_to_log
+from lib.popup_box import PopupBox
 from lib.usb_serial import usb_serial
 
 from lib.api import API
@@ -11,9 +12,10 @@ from colorama import Style, Fore
 calibration_cmd_prefix = "calibration"
 class serial_605(usb_serial):
 
-	def __init__(self):
+	def __init__(self, popup_box):
 		# write and read timeouts don't matter when talking with the zephyr shell
 		usb_serial.__init__(self, 115200, 0.5, 10)
+		self.popup_box = popup_box
 
 	def send_command(self, command: str, timeout: float = 0, output: bool = True, to_file: bool = True):
 		terminal_lines: list = []
@@ -76,12 +78,14 @@ class serial_605(usb_serial):
 							if line.find(err_color) != -1:
 								# if an error was given by the 605, print it and quit application
 								line = line.replace(err_color, "").replace(end_color, "")
-								close_application(line, True)
+								self.popup_box.critical_message("605 Error", line)
+								return
 								
 							if line.find(warn_color) != -1:
 								# if a warning was given, print it and continue
 								line = line.replace(err_color, "").replace(end_color, "")
-								print(Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL)
+								self.popup_box.critical_message("605 Warning", Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL)
+								return
 					
 					if t - int(t) == 0:
 						# prevents function from stalling aka able to grab cmd ready text
@@ -89,12 +93,15 @@ class serial_605(usb_serial):
 						self.ser.write(('\r\n').encode())
 						self.ser.write(('\r\n').encode())
 			except:
-				close_application("There was an error reading the command. Please check spelling")
+				self.popup_box.critical_message("Error", "There was an error reading the command. Please check spelling")
+				return
 
-			close_application("Timeout or error when sending command, may need to reset device")
+			self.popup_box.critical_message("Error", "Timeout or error when sending command, may need to reset device")
+			return
 
 		else:
-			close_application("Serial port closed; please make sure the serial port is opened.")
+			self.popup_box.critical_message("Error", "Serial port closed; please make sure the serial port is opened.")
+			return
 		return
 
 	#### WRITE COMMANDS ####
@@ -109,14 +116,16 @@ class serial_605(usb_serial):
 
 		data = self.send_command(cmd, timeout = 200)
 		if data == None:
-			close_application("Plug-in or reboot 605 and try again")
+			self.popup_box.critical_message("605 No Working", "Plug-in or reboot 605 and try again")
+			return
 
 		slot:str = 0
 		cable_array:list = []
 
 		for i in range(len(data)):
 			if len(data) == 1:
-				close_application("No cables found; the ground and power may be swapped on one of the cables.")
+				self.popup_box.critical_message("Cables Not Found", "No cables found; the ground and power may be swapped on one of the cables.")
+				return
 
 			if data[i].find("slot: ")!= -1:
 				slot = data[i][-1]
@@ -145,10 +154,12 @@ class serial_605(usb_serial):
 						if i == len(data):
 							break
 					except:
-						close_application("Something went wrong when pulling cable data from 605. Try running application again")
+						self.popup_box.critical_message("Unknown Error", "Something went wrong when pulling cable data from 605. Try running application again")
+						return
 
 		if len(cable_array) == 0:
-			close_application(Fore.YELLOW + Style.BRIGHT + "unable to find cables" + Style.RESET_ALL)
+			self.popup_box.critical_message("No Cables", "unable to find cables")
+			return
 
 		cable_array.sort(key=lambda cable: cable["port"])
 
@@ -375,7 +386,7 @@ class serial_605(usb_serial):
 			formatted_id:str = ""
 
 			for i in range(len(id), 0, -2):
-				formatted_id += id[i-2: i]
+				formatted_id += ''.join(id[i-2: i])
 
 			ids[index] = formatted_id
 
@@ -402,16 +413,34 @@ class serial_605(usb_serial):
 		return False
 
 	def reverse_id(self, id:str):
+
+		if isinstance(id, list):
+			id = id[0]
+
 		formatted_id:str = ""
 
 		for i in range(len(id), 0, -2):
-			formatted_id += id[i-2: i]
+			formatted_id += ''.join(id[i-2: i]) # list of chars to str
 
 		return formatted_id
 
 	def set_clock(self):
 		utc_seconds = int(datetime.utcnow().timestamp())
 		self.send_command("app set_time " + str(utc_seconds))
+
+	def run_sensor_pwr_test(self, serial:str):
+
+		data = self.send_command(calibration_cmd_prefix + " pwr_test " + serial)
+		sensor_pwr_results:list = []
+
+		for line in data:
+			if line.find("all_pwred: ") != -1:
+				return line.replace("all_pwred: ", "").replace('\n', "")
+
+			if line.find("pwred: ") != -1:
+				sensor_pwr_results.append(line.replace("pwred: ", "").replace('\n', ""))
+
+		return sensor_pwr_results
 
 if __name__ == "__main__":
 	

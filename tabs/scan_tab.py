@@ -5,21 +5,21 @@ from PyQt5.QtWidgets import QWidget, QTableWidget, QGridLayout, QMessageBox, QPu
 from serial_605 import serial_605
 from components.sensor_component import SensorComponent
 from random import randrange
-from lib.file_handler import load_json_cable
+from lib.file_handler import load_json_cable, update_json_field
 
 class ScanTab(QWidget):
-	def __init__(self, shell_605):
+	def __init__(self, shell_605, parent):
 		super(ScanTab, self).__init__()
 		uic.loadUi("ui/tabs/scan_tab.ui", self)
 		self.shell:serial_605 = shell_605
 		self.sensor_ids:list = []
 
-		cable = load_json_cable()["sensors"]
-		self.total_sensors:int = len(cable["sensors"])
-		if cable["sensors"][0].lower().find("protection") != -1:
+		sensors = load_json_cable()["sensors"]
+		self.total_sensors:int = len(sensors)
+		if sensors[0]["component"].lower().find("protection") != -1:
 			self.total_sensors -= 1
 
-		del cable
+		del sensors
 
 		self.img_folder = "components/images/PCBA"
 		self.tray_char = 'A'
@@ -34,6 +34,7 @@ class ScanTab(QWidget):
 		
 		self.sort_sensors_btn.setEnabled(False)
 		self.replace_sensor_btn.setEnabled(False)
+		self.tab_widget = parent
 		#self.sensor_table.clicked.connect(self.replace_sensor)
 
 	def scan_sensors(self):
@@ -43,11 +44,15 @@ class ScanTab(QWidget):
 
 		self.scan_sensors_btn.setEnabled(False)
 
+		# diabling build and program tabs while scanning
+		self.tab_widget.setTabEnabled(2, False)
+		self.tab_widget.setTabEnabled(3, False)
+
 		while i < (self.total_sensors):
 			ids:list = self.shell.find_sensors_on_port(1,1)
 
 			if len(ids) > 1:
-				QMessageBox.critical(self, "Too many ids", "Found multiple sensor ids. Can only scan one sensor at a time")
+				QMessageBox.critical(self, "Too many ids", "Found multiple sensor ids. Can only scan one sensor at a time.")
 
 			elif len(ids) == 0:
 				print("No sensors found on cable. Re-scanning...")
@@ -98,11 +103,13 @@ class ScanTab(QWidget):
 		return id
 
 	def sort_sensors(self, ignore_sen = 0):
-		reversed_hex_totals:list = []
+		# stores a list of reversed hex totals and the id that generated it
+		totals_and_ids:list = []
 
 		for order_num, id in enumerate(self.sensor_ids):
 			total:int = 0
 
+			# index after crc
 			i:int = 2
 			while(id[i] == '0'): i += 1
 			# removing crc, leading 0's after crc, and family code. Reads ids from right to left
@@ -118,21 +125,27 @@ class ScanTab(QWidget):
 					# left shift 4 and add in 4 LSBs -> ex: 1001 0000 + 0000 0101
 					total = (total << 4) + int(reversed_binary, 2)
 
-			reversed_hex_totals.append([total, order_num+1])
-		# combining totals and ids and sorting by totals from lowest to highest
-		print(reversed_hex_totals)
+			totals_and_ids.append([total, id])
 		
-		# sorted_ids = [x for _, x in sorted(zip(reversed_hex_totals, self.sensor_ids))]
-		# print(sorted_ids)
+		# sorting ids by totals from lowest to highest
+		sorted_totals = sorted(totals_and_ids, key=lambda pair: pair[0])
 
-		reversed_hex_totals.sort(key=lambda pair: pair[0])
-		print(reversed_hex_totals)
+		for i, id in enumerate(self.sensor_ids):
+			# displaying the order number of each sensor
+			sensor_widget = self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount())
+			for k in range(len(sorted_totals)):
+				if (id == sorted_totals[k][1]):
+					sensor_widget.set_order_number(str(k+1))
+					break
 
-		for i, total in enumerate(reversed_hex_totals):
-			self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount()).set_order_number(str(total[1]))
-
+		# updated ids to be in sorted order
+		self.sensors_ids = [ t[1] for t in sorted_totals ]
+		update_json_field("sensor_ids", self.sensor_ids)
 		self.sort_sensors_btn.setEnabled(False)
-		# return [[new_sen_order[i], sorted_ids[i]] for i in range(len(reversed_hex_totals))]
+
+		# enabling build and program tabs again
+		self.tab_widget.setTabEnabled(2, True)
+		self.tab_widget.setTabEnabled(3, True)
 
 	def replace_sensor(self):
 		cell_widget = self.sensor_table.cellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn())
@@ -156,16 +169,38 @@ class ScanTab(QWidget):
 					QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " already scanned.")
 				else:
 					cell_widget.set_id(self.format_id(ids[0]))
-					sensor_number = (self.sensor_table.currentRow() * self.sensor_table.columnCount()) + (self.sensor_table.currentColumn() + 1)
+					sensor_number = cell_widget.get_order_number()
 					self.sensor_ids[sensor_number - 1] = ids[0]
 					print(self.sensor_ids)
+
+					# update cable file with new list of ids
+					update_json_field("sensor_ids", self.sensor_ids)
 					return
 			else:
-				QMessageBox.critical(self, "Invalid id found", "Sensor with id " + ids[0] + " found.")
+				QMessageBox.critical(self, "Invalid id found", "Sensor with invalid id " + ids[0] + " found. May be a counterfeit sensor")
 
 			loop = QEventLoop()
 			QTimer.singleShot(500, loop.quit)
 			loop.exec()
+
+	def left_right_select(self):
+		current_sensor_num = self.sensor_table.cellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn()).cell_widget.get_order_number()
+		direction = -1
+
+		for i in range(len(self.sensor_ids)):
+
+			sensor_widget = self.sensor_table.cellWidget(int(i / self.sensor_table.columnCount()), i % self.sensor_table.columnCount())
+
+			if sensor_widget.get_order_number() == current_sensor_num + direction:
+
+				if i+1 == len(self.sensor_ids):
+					self.righ_btn.setEnabled(False)
+					self.left_btn.setEnabled(True)
+				elif i == 0:
+					self.left_btn.setEnabled(False)
+					self.righ_btn.setEnabled(True)
+
+		self.left_btn
 
 	def delete_sensor(self):
 
@@ -174,7 +209,6 @@ class ScanTab(QWidget):
 			return
 
 		self.sensor_table.removeCellWidget(self.sensor_table.currentRow(), self.sensor_table.currentColumn())
-
 	
 	def update_sensor_total(self, sensor_num):
 		self.total_sensors = sensor_num

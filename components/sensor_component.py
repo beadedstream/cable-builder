@@ -24,6 +24,9 @@ class SensorComponent(QWidget):
 	def set_id(self, text):
 		self.id.setText(text)
 
+	def get_order_number(self):
+		return self.order_num.text()
+
 	def place_img(self, img_name):
 		self.sensor_img.setPixmap(QPixmap(self.img_folder + img_name).scaledToHeight(self.max_img_height))
 

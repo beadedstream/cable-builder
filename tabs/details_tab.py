@@ -1,7 +1,7 @@
 from re import T
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QPushButton, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QWidget, QPushButton, QMessageBox, QFileDialog, QTabWidget
 import json
 import os
 from lib.file_handler import write_cable_to_json
@@ -9,6 +9,7 @@ from lib.file_handler import write_cable_to_json
 class DetailsTab(QWidget):
 	def __init__(self):
 		super(DetailsTab, self).__init__()
+
 		uic.loadUi("ui/tabs/details_tab.ui", self)
 		self.sensor_components = []
 
@@ -71,16 +72,24 @@ class DetailsTab(QWidget):
 		if cable_obj["cable"][1]["component"].find("no mlink") != 1:
 			cable["is_mlink"] = False
 		else: 
-			cable["is_mlink"] = False
+			cable["is_mlink"] = True
+			cable["has_eeprom"] = True
 
 		cable["initial_cableColor"] = cable_obj["cable"][1]["cableColor"].lower()
 
 		for i, component in enumerate(cable_obj["cable"]):
 			c = component["component"].lower()
 			if c.find("sensor") != -1:
-				component["order"] = c.split(" ")[-1]
+				order = int(c.split(" ")[-1])
+				component["order"] = order
 				component["section"] = round(component["position"] - previous_position, 5)
 				cable["sensors"].append(component)
+
+				if order == 1:
+					# if protection board aka eeprom prom is found and recognized as being in the same mold as the first sensor
+					if c.find("protection") != -1:
+						cable["has_eeprom"] = True
+					
 			elif c.find("zero") != -1:
 				cable["zero_marker_length"] = cable["lead"]
 				cable["lead"] = cable["lead"] + component["length"]

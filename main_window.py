@@ -13,17 +13,22 @@ import time
 import sys
 import json
 
+from lib.popup_box import PopupBox
+
 class Ui(QMainWindow):
 	def __init__(self):
 		super(Ui, self).__init__() # Call the inherited classes __init__ method
 		uic.loadUi('ui/main.ui', self) # Load the .ui file
 		self.show() # Show the GUI
-		self.shell = serial_605()
+		self.popup_box = PopupBox()
+		self.shell = serial_605(self.popup_box)
+
 		while not self.detect_and_connect_605():
 			pass
 
 		self.details_tab = DetailsTab()
 		self.details_tab.serial_comboBox.currentTextChanged.connect(self.serial_selected)
+		self.tabWidget.tabBarClicked.connect(self.clicked_tabbar)
 
 		self.tabWidget.addTab(self.details_tab, "Cable Details")
 		self.show() # Show the GUI
@@ -71,9 +76,14 @@ class Ui(QMainWindow):
 			for i in range(self.tabWidget.count(), 0, -1):
 				self.tabWidget.removeTab(i)
 
-		self.tabWidget.addTab(ScanTab(self.shell), "Scan and Sort")
+		self.tabWidget.addTab(ScanTab(self.shell, self.tabWidget), "Scan and Sort")
 		self.tabWidget.addTab(BuildTab(self.shell), "Build")
 		self.tabWidget.addTab(ProgramTab(self.shell), "Program")
+
+	def clicked_tabbar(self, index):
+		if index == 2 or index == 3:
+			# makes sure build and program tabs hold the most recent cable information
+			self.tabWidget.widget(index).update_cable()
 
 if __name__ == "__main__":
 	app = QtWidgets.QApplication(sys.argv)

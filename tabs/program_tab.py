@@ -14,7 +14,11 @@ class ProgramTab(QWidget):
 
 		self.verify_cable_btn.clicked.connect(self.verify_cable)
 		self.write_to_eeprom_btn.clicked.connect(self.write_to_eeprom)
+
 		self.cable = load_json_cable()
+
+		if not self.cable["has_eeprom"]:
+			self.write_to_eeprom_btn.setEnabled(False)
 
 		self.sensor_widgets:list = []
 		self.generate_built_cable()
@@ -43,13 +47,15 @@ class ProgramTab(QWidget):
 			h_layout.addWidget(CableComponent(str(first_sensor["position"]), cable_color + "cable.jpg"))
 
 		p_text:str = ""
+		extra_sensor:int = 0
 		# if first sensor has a protection board
 		if first_sensor["component"].lower().find("protection") != -1:
 			p_text = "_protection"
+			extra_sensor = 1
 		if first_sensor["mold"].find("90") == -1:
-			cc = CableComponent("", "mold" + p_text + ".jpg")
+			cc = CableComponent(str(1 - extra_sensor), "mold" + p_text + ".jpg")
 		else:
-			cc = CableComponent("", "mold_RA" + p_text +".jpg")
+			cc = CableComponent(str(1 - extra_sensor), "mold_RA" + p_text +".jpg")
 
 		h_layout.addWidget(cc)
 		self.sensor_widgets.append(cc)
@@ -67,7 +73,7 @@ class ProgramTab(QWidget):
 				h_layout = QHBoxLayout()
 
 			if component["mold"].find("90") == -1:
-				cc = CableComponent("", "mold" + "" + ".jpg")
+				cc = CableComponent(str((i+2) - extra_sensor), "mold" + "" + ".jpg")
 			else:
 				cc = CableComponent("", "mold_RA" + "" +".jpg")
 
@@ -80,10 +86,13 @@ class ProgramTab(QWidget):
 		if int(h_layout.count()) != 0:
 			self.built_cable_layout.addLayout(h_layout)
 
-	def update_response_text(self, txt, is_err = False):
+	def update_response_text(self, txt, is_err = True):
 		if is_err:
 			self.response_text.setStyleSheet("QLabel { background-color : red;}")
 		else:
 			self.response_text.setStyleSheet("QLabel { background-color : green; color : black; }")
 
 		self.response_text.setText(txt)
+
+	def update_cable(self):
+		self.cable = load_json_cable()
