@@ -1,6 +1,7 @@
 from tkinter.tix import Tree
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from components.cable_component import CableComponent
 from lib.file_handler import load_json_cable
@@ -55,6 +56,7 @@ class BuildTab(QWidget):
 			if int(h_layout.count()) >= 8:
 				self.cable_layout.addLayout(h_layout)
 				h_layout = QHBoxLayout()
+				h_layout.setAlignment(Qt.AlignLeft)
 
 			cc = CableComponent(str((i+2) - extra_sensor), "sensor.jpg")
 			h_layout.addWidget(cc)

@@ -1,6 +1,6 @@
 from colorama import Style, Fore
 
-def convert_to_mm(value:int, units:str):
+def convert_to_mm(value:float, units:str):
 
 	conversion_val:float = 0
 	

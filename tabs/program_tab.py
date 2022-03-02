@@ -1,9 +1,12 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtGui import QFont, QPalette
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from components.cable_component import CableComponent
 from lib.file_handler import load_json_cable
 from serial_605 import serial_605
+from datetime import datetime
+from lib.helper import convert_to_mm
 
 class ProgramTab(QWidget):
 	def __init__(self, shell_605):
@@ -23,12 +26,130 @@ class ProgramTab(QWidget):
 		self.sensor_widgets:list = []
 		self.generate_built_cable()
 
+	def check_eeprom(self, cable_info=False):
+		check = False
+
+		if not cable_info:
+			info_on_cables = self.shell.initialize_cables()
+
+			# Testing if cable is in the right slot and port
+			for c_info in info_on_cables:
+				if c_info["port"] == '2' or c_info["slot"] == 1:
+					cable_info = c_info
+
+		if not cable_info: # if cable_info is empty
+			self.update_response_text("Cable not found. Make sure to plug cable into port 2")
+			return False
+
+		# Testing if cable is suppose to and does or doesn't have an EEPROM or Mlink
+		if not self.cable["has_eeprom"]:
+			if cable_info["has_eeprom"]:
+				self.update_response_text("This cable is not suppose to have an Eeprom")
+				return False
+		elif not cable_info["has_eeprom"]:
+			if self.cable["is_mlink"]:
+				self.update_response_text("Missing MLink board")
+				return
+			elif not self.cable["is_mlink"] and self.cable["has_eeprom"]:
+				self.update_response_text("Missing protection board")
+				return False
+
+		return True
+
 	def write_to_eeprom(self):
-		pass
+		if not self.check_eeprom():
+			return
+
+		self.shell.write_serial("1", "2", self.cable["serial"])
+		# write exact positions - lead
+		if self.cable["is_mlink"]:
+			self.shell.write_ids_to_eeprom(self.cable["serial"])
+		#else: this step is already done
+
+		positions:list = []
+		for s in self.cable["sensors"]:
+			positions.append(convert_to_mm(s["position"], self.cable["units"]))
+
+		self.shell.write_spacings(self.cable["serial"], positions)
+		self.write_metadata()
+
+	def write_metadata(self):
+		pairs:dict = {
+			"date_created": datetime.utcnow().strftime("%m%d%y"),
+			"lead": convert_to_mm(self.cable["lead"], self.cable["units"]),
+			"coefficients": "43.0,-0.18,0.000139",
+			"manufacturer": "Beadedstream",
+			"cable_type": "DTC"
+		}
+
+		if "zero_marker_length" in self.cable.keys():
+			pairs["lead_to_zero"] = self.cable["zero_marker_length"]
+
+		for key in pairs:
+			self.shell.write_metadata(self.cable["serial"], key, pairs[key])
 
 	def verify_cable(self):
-		self.update_response_text("Error Text")
-		pass
+
+		info_on_cables = self.shell.initialize_cables()
+
+		for c_info in info_on_cables:
+			if c_info["port"] == '2' or c_info["slot"] == 1:
+				cable_info = c_info
+
+		if not self.check_eeprom(cable_info=cable_info):
+			return
+
+		# Testing if the correct number of sensors are found on the cable
+		if int(cable_info["sensors"]) > (len(self.cable["sensors"])):
+			self.update_response_text(cable_info["sensors"] + " sensors found on cable. Only " + str(len(self.cable["sensors"])) + " needed")
+			return
+
+		cable_ids = self.shell.read_ids(cable_info["generated_serial"])
+		
+		# Test for missing or wrong ids 
+		if not self.validate_ids(cable_ids):
+			return
+
+		# Test if part of or the entire cable is parasitically powered
+		pwr_results = self.shell.run_sensor_pwr_test(cable_info["generated_serial"])
+		if isinstance(pwr_results, list):
+			failed = False
+			for i, result in enumerate(pwr_results):
+				if result.lower() == "parasitic":
+					self.append_response_text("Position " + str(i) + " Power Failure")
+					self.sensor_widgets[i].change_background_color()
+					failed = True
+			if failed:
+				return
+		else:
+			if pwr_results.lower() == "parasitic":
+				self.update_response_text("Cable Power Failure")
+				return
+
+		# Test cable temperatures
+		self.shell.set_offsets_to_0(cable_info["generated_serial"]) # removes any preloaded offsets
+		temps = self.shell.read_sensor_temperatures(cable_info["generated_serial"])
+		# writing temps to screen
+		for i, widget in enumerate(self.sensor_widgets):
+			widget.set_bottom_label(str(temps[i]) + "C")
+
+		failed = False
+
+		# checking for valid temps
+		for i, widget in enumerate(self.sensor_widgets):
+			# TODO: output muliple failures
+			if temps[i] >= 90:
+				self.append_response_text("Position " + str(i) + "Failed")
+				widget.change_background_color()
+				failed = True
+
+			elif (temps[i] > 84) and (temps[i] <= 86):
+				self.append_response_text("Position " + str(i) + " Power Failure")
+				widget.change_background_color()
+				failed = True
+
+		if not failed:
+			self.update_response_text("Test passed", is_err=False)
 
 	def generate_built_cable(self):
 		h_layout = QHBoxLayout()
@@ -71,6 +192,7 @@ class ProgramTab(QWidget):
 			if int(h_layout.count()) >= 8:
 				self.built_cable_layout.addLayout(h_layout)
 				h_layout = QHBoxLayout()
+				h_layout.setAlignment(Qt.AlignLeft)
 
 			if component["mold"].find("90") == -1:
 				cc = CableComponent(str((i+2) - extra_sensor), "mold" + "" + ".jpg")
@@ -93,6 +215,15 @@ class ProgramTab(QWidget):
 			self.response_text.setStyleSheet("QLabel { background-color : green; color : black; }")
 
 		self.response_text.setText(txt)
+
+	def append_response_text(self, text):
+
+		old_text = self.response_text.text()
+
+		if old_text == "":
+			self.response_text.setStyleSheet("QLabel { background-color : red;}")
+
+		self.response_text.setText(old_text + text + "\n")
 
 	def update_cable(self):
 		self.cable = load_json_cable()

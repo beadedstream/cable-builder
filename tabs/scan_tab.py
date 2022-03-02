@@ -21,12 +21,12 @@ class ScanTab(QWidget):
 
 		del sensors
 
-		t = QTableWidget()
-
 		self.img_folder = "components/images/PCBA"
 		self.tray_char = 'A'
 		self.tray_num = 0
 		self.sensors_scanned = 0
+
+		self.total_label.setText(str(self.total_sensors))
 
 		self.scan_sensors_btn.clicked.connect(self.scan_sensors)
 		self.sort_sensors_btn.clicked.connect(self.sort_sensors)
@@ -95,6 +95,7 @@ class ScanTab(QWidget):
 			self.tray_char = chr(ord(self.tray_char) + 1)
 
 		self.sensor_ids.append(id)
+		self.scanned_label.setText(str(len(self.sensor_ids)))
 		print("sensor with id "+ id + " added")
 
 	def sort_sensors(self, ignore_sen = 0):
