@@ -12,8 +12,16 @@ from serial_605 import serial_605
 import time
 import sys
 import json
+import os
 
 from lib.popup_box import PopupBox
+
+if getattr(sys, 'frozen', False):
+    application_path = os.path.dirname(sys.executable)
+elif __file__:
+    application_path = os.path.dirname(__file__)
+
+os.chdir(application_path)
 
 class Ui(QMainWindow):
 	def __init__(self):

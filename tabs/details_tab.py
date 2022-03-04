@@ -15,11 +15,8 @@ class DetailsTab(QWidget):
 
 		self.load_json_btn.clicked.connect(self.get_json_file)
 		self.serial_comboBox.addItem("")
-		# self.serial_comboBox.currentTextChanged.connect(self.serial_selected)
 		self.json_dir:str = ""
 		self.current_ids:list = []
-
-		#lambda: f_name(arg)
 
 	def get_json_file(self):
 		file_dir = QFileDialog.getOpenFileName(self, 'Open file', '.',"Json file (*.json)")[0]
