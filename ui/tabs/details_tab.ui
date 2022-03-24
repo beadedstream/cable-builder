@@ -373,6 +373,20 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
+       <widget class="QPushButton" name="get_by_serial_btn">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>75</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Load Using
+Serial</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="load_json_btn">
         <property name="minimumSize">
          <size>

@@ -53,6 +53,7 @@ class API:
 
         except:
             print("Encountered error when " + error_message + ".")
+            return "Encountered error when " + error_message + "."
 
     def GET(self, endpoint, error_message, params={}, admin=True):
         return self.api_request('GET', endpoint, error_message, params=params, admin=admin)
@@ -84,10 +85,7 @@ class API:
         return self.GET('/cable/'+str(cable_id), 'fetching cable')
 
     def get_cable_by_serial(self, serial_num):
-        params = {
-            "serial": str(serial_num)
-        }
-        return self.GET('/cable/', 'fetching cable', params=params)
+        return self.GET('/cable/serial/'+serial_num, 'fetching cable')
 
     def get_sensor(self, sensor_id):
         return self.GET('/sensor/'+str(sensor_id), 'fetching sensor')
@@ -110,11 +108,8 @@ class API:
     def update_cable(self, cable_obj):
         return self.PUT('/cable/'+str(cable_obj["cables"][-1]['id']), 'updating sensor', json_data=cable_obj)
 
-    def get_cable_build_by_serial(self, serial):
-        params = {
-            "serial": str(serial)
-        }
-        return self.GET('/cableBuilder/', 'fetching cablebuilder data', params=params)
+    def update_cable_by_serial(self, serial_num, cable_obj):
+        return self.PUT('/cable/serial/'+serial_num, 'updating sensor', json_data=cable_obj)
 
     def generate_calibation_id(self, serial, operator=None, notes = ""):
         data:dict = {
@@ -131,12 +126,12 @@ class API:
     def get_project_from_serial(self, serial):
         try:
             proj_id = self.get_cable_by_serial(
-                serial)['cables'][-1]['project']['id'][-1]
+                serial)["cable"]["use"][-1]["project"]["id"]
         except:
             print("encountered error when fetching project info from cable")
             return None
 
-        return self.GET('/project/'+str(proj_id), 'fetching project')
+        return self.GET('/project/'+str(proj_id), 'fetching project')["project"]
 
     def create_cable_event(self, id, event):
         return self.PUT('/cable/'+str(id)+'/event', 'creating cable event', json_data=event)
@@ -199,12 +194,16 @@ class API:
 
         return valid_sensors
 
+
 if __name__ == "__main__":
     api = API()
     #print(api.get_sensors_by_serial("4004"))
     
-    print(api.get_cable_by_serial("2175"))
-
+    print(api.get_cable_by_serial("4172"))
+    #print(api.get_cable_by_serial("4172")["cable"]["use"][0]["project"]["id"])
+    #project = api.get_project_from_serial("4004")
+    #print(project["name"])
+    #print(project["org"]["name"])
 	# functions = [
 	# 	"login",
 	# 	"logout",
@@ -239,10 +238,6 @@ if __name__ == "__main__":
 
 	# 	except Exception as e:
 	# 		print(e.message)
-
-# if __name__ == "__main__":
-#     api = API()
-
 
     # print(api.login(user))
 

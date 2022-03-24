@@ -6,7 +6,7 @@ from components.cable_component import CableComponent
 from lib.file_handler import load_json_cable
 from serial_605 import serial_605
 from datetime import datetime
-from lib.helper import convert_to_mm
+from lib.helper import convert_mm_to_dimension
 
 class ProgramTab(QWidget):
 	def __init__(self, shell_605):
@@ -14,11 +14,13 @@ class ProgramTab(QWidget):
 		uic.loadUi("ui/tabs/program_tab.ui", self)
 		self.shell:serial_605 = shell_605
 		self.cable_components = []
+		
 
 		self.verify_cable_btn.clicked.connect(self.verify_cable)
 		self.write_to_eeprom_btn.clicked.connect(self.write_to_eeprom)
 
 		self.cable = load_json_cable()
+		self.units = self.cable["display_units"]
 
 		if not self.cable["has_eeprom"]:
 			self.write_to_eeprom_btn.setEnabled(False)
@@ -68,22 +70,30 @@ class ProgramTab(QWidget):
 
 		positions:list = []
 		for s in self.cable["sensors"]:
-			positions.append(convert_to_mm(s["position"], self.cable["units"]))
+			positions.append(s["position"])
 
 		self.shell.write_spacings(self.cable["serial"], positions)
 		self.write_metadata()
 
 	def write_metadata(self):
+		connector_to_first = 0
+		connector_to_zero = 0
+		
+		for sensor in self.cable["sensors"]:
+			if sensor["component"].split(" ")[-1] == '1':
+				connector_to_first = self.cable["lead"] + sensor["position"]
+
 		pairs:dict = {
 			"date_created": datetime.utcnow().strftime("%m%d%y"),
-			"lead": convert_to_mm(self.cable["lead"], self.cable["units"]),
+			"lead": connector_to_first,
+			"connect_to_0"
 			"coefficients": "43.0,-0.18,0.000139",
 			"manufacturer": "Beadedstream",
 			"cable_type": "DTC"
 		}
 
 		if "zero_marker_length" in self.cable.keys():
-			pairs["lead_to_zero"] = self.cable["zero_marker_length"]
+			pairs["connect_to_0"] = self.cable["zero_marker_position"]
 
 		for key in pairs:
 			self.shell.write_metadata(self.cable["serial"], key, pairs[key])
@@ -163,9 +173,9 @@ class ProgramTab(QWidget):
 		if "zero_marker_length" in self.cable.keys():
 			h_layout.addWidget(CableComponent(str(self.cable["zero_marker_length"]), cable_color + "cable.jpg"))
 			h_layout.addWidget(CableComponent("","zero_marker.jpg"))
-			h_layout.addWidget(CableComponent(str(round(first_sensor["position"] - self.cable["zero_marker_length"], 5)), "cable.jpg"))
+			h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(self.cable["zero_marker_length"]), self.units), "cable.jpg"))
 		else:
-			h_layout.addWidget(CableComponent(str(first_sensor["position"]), cable_color + "cable.jpg"))
+			h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(self.cable["lead"], self.units)), cable_color + "cable.jpg"))
 
 		p_text:str = ""
 		extra_sensor:int = 0
@@ -173,7 +183,7 @@ class ProgramTab(QWidget):
 		if first_sensor["component"].lower().find("protection") != -1:
 			p_text = "_protection"
 			extra_sensor = 1
-		if first_sensor["mold"].find("90") == -1:
+		if first_sensor["mold"]["type"].find("90") == -1:
 			cc = CableComponent(str(1 - extra_sensor), "mold" + p_text + ".jpg")
 		else:
 			cc = CableComponent(str(1 - extra_sensor), "mold_RA" + p_text +".jpg")
@@ -184,17 +194,18 @@ class ProgramTab(QWidget):
 		cable_color = ""
 		if first_sensor["cableColor"].lower().find("armor") != -1:
 			cable_color = "armored_"
-		h_layout.addWidget(CableComponent(str(first_sensor["length"]), cable_color + "cable.jpg"))
+		h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(first_sensor["length"], self.units)), cable_color + "cable.jpg"))
 		
 		total_sensors = len(self.cable["sensors"])
 		for i, component in enumerate(self.cable["sensors"][1:]):
+			cable_color = ""
 			# if 6 components have been added place next set on another row
 			if int(h_layout.count()) >= 8:
 				self.built_cable_layout.addLayout(h_layout)
 				h_layout = QHBoxLayout()
 				h_layout.setAlignment(Qt.AlignLeft)
 
-			if component["mold"].find("90") == -1:
+			if component["mold"]["type"].find("90") == -1:
 				cc = CableComponent(str((i+2) - extra_sensor), "mold" + "" + ".jpg")
 			else:
 				cc = CableComponent("", "mold_RA" + "" +".jpg")
@@ -202,8 +213,11 @@ class ProgramTab(QWidget):
 			h_layout.addWidget(cc)
 			self.sensor_widgets.append(cc)
 
+			if component["cableColor"].lower().find("armor") != -1:
+				cable_color = "armored_"
+
 			if (i+1) != total_sensors-1:
-				h_layout.addWidget(CableComponent(str(component["length"]), "cable.jpg"))
+				h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(component["length"], self.units)), cable_color + "cable.jpg"))
 
 		if int(h_layout.count()) != 0:
 			self.built_cable_layout.addLayout(h_layout)
