@@ -87,6 +87,7 @@ class DetailsTab(QWidget):
 		cable["sensors"] = []
 		cable["serial"] = serial_num
 		cable["connector"] = cable_obj["connector"]
+		cable["has_eeprom"] = False
 
 		if "productionComment" in cable_obj.keys():
 			cable["comment"] = cable_obj["productionComment"]

@@ -20,7 +20,6 @@ class BuildTab(QWidget):
 		self.sensor_widgets:list = []
 		self.generate_cable()
 		
-
 	def generate_cable(self):
 
 		h_layout = QHBoxLayout()
