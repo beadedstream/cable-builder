@@ -6,7 +6,7 @@ class CableComponent(QWidget):
 	def __init__(self, top_label_text, img_name):
 		super(CableComponent, self).__init__()
 		uic.loadUi("ui/components/cable_component.ui", self)
-		self.img_folder = "components/images/"
+		self.img_folder = "ui/components/images/"
 		self.max_img_height = 32
 
 		self.top_label.setText(top_label_text)
