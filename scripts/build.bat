@@ -5,4 +5,4 @@ rmdir /s /q build
 
 7za a "..\dist\D605_Cable_Builder.zip" "..\ui\" "..\dist\D605_Cable_Builder.exe"
 del ..\dist\*.exe
-:: iscc installer_script.iss (will add this later)
+:: iscc installer_script.iss (will add this later) 
