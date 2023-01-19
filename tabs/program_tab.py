@@ -173,7 +173,7 @@ class ProgramTab(QWidget):
 		if "zero_marker_length" in self.cable.keys():
 			h_layout.addWidget(CableComponent(str(self.cable["zero_marker_length"]), cable_color + "cable.jpg"))
 			h_layout.addWidget(CableComponent("","zero_marker.jpg"))
-			h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(self.cable["zero_marker_length"]), self.units), "cable.jpg"))
+			h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(self.cable["zero_marker_length"], self.units)), "cable.jpg"))
 		else:
 			h_layout.addWidget(CableComponent(str(convert_mm_to_dimension(self.cable["lead"], self.units)), cable_color + "cable.jpg"))
 

@@ -28,10 +28,8 @@ class API:
         self.name = ""
         # self.password = ""
 
-    def api_request(self, request_type, endpoint, error_message, json_data=None, params={}, base_URI=BASE_URI, admin=True):
+    def api_request(self, request_type, endpoint, error_message, json_data=None, params={}, base_URI=BASE_URI):
 
-        if admin:
-            params['admin'] = 'true'
         url = base_URI+endpoint
 
         # print(url)
@@ -55,20 +53,20 @@ class API:
             print("Encountered error when " + error_message + ".")
             return "Encountered error when " + error_message + "."
 
-    def GET(self, endpoint, error_message, params={}, admin=True):
-        return self.api_request('GET', endpoint, error_message, params=params, admin=admin)
+    def GET(self, endpoint, error_message, params={}):
+        return self.api_request('GET', endpoint, error_message, params=params)
 
-    def PUT(self, endpoint, error_message, params={}, json_data=None, admin=False):
+    def PUT(self, endpoint, error_message, params={}, json_data=None):
         return self.api_request('PUT', endpoint, error_message,
-                                json_data=json_data, params=params, admin=admin)
+                                json_data=json_data, params=params)
 
-    def POST(self, endpoint, error_message, params={}, json_data=None, admin=False):
+    def POST(self, endpoint, error_message, params={}, json_data=None):
         return self.api_request('POST', endpoint, error_message,
-                                json_data=json_data, params=params, admin=admin)
+                                json_data=json_data, params=params)
 
-    def DELETE(self, endpoint, error_message, params={}, json_data=None, admin=False):
+    def DELETE(self, endpoint, error_message, params={}, json_data=None):
         return self.api_request('DELETE', endpoint, error_message,
-                                json_data=json_data, params=params, admin=admin)
+                                json_data=json_data, params=params)
 
     def login(self, userDetails):
         resp = self.POST('/user/session/', 'logging in user', json_data=userDetails)
@@ -199,7 +197,7 @@ if __name__ == "__main__":
     api = API()
     #print(api.get_sensors_by_serial("4004"))
     
-    print(api.get_cable_by_serial("4172"))
+    print(api.get_cable_by_serial("4500"))
     #print(api.get_cable_by_serial("4172")["cable"]["use"][0]["project"]["id"])
     #project = api.get_project_from_serial("4004")
     #print(project["name"])
