@@ -10,7 +10,7 @@ class SensorComponent(QWidget):
 		self.cell_num.setText(cell_text)
 		self.id.setText(id)
 		
-		self.img_folder = "components/images/"
+		self.img_folder = "ui/components/images/"
 		# default img
 		self.img = QPixmap(self.img_folder + "PCBA").scaledToHeight(self.max_img_height)
 		self.sensor_img.setPixmap(self.img)
