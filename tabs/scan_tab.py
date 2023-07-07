@@ -52,7 +52,7 @@ class ScanTab(QWidget):
 		self.tab_widget.setTabEnabled(3, False)
 
 		while i < (self.total_sensors):
-			ids:list = self.shell.find_sensors_on_port(1,1)
+			ids:list = self.shell.find_sensors_on_port(3, 1)
 
 			if len(ids) > 1:
 				QMessageBox.critical(self, "Too many ids", "Found multiple sensor ids. Can only scan one sensor at a time.")

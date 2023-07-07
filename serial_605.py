@@ -9,7 +9,8 @@ from lib.api import API
 from datetime import datetime
 from colorama import Style, Fore
 
-calibration_cmd_prefix = "calibration"
+calibration_cmd_prefix = "dtc"
+onewire_cmd_prefix = "1wire"
 class serial_605(usb_serial):
 
 	def __init__(self, popup_box):
@@ -186,17 +187,6 @@ class serial_605(usb_serial):
 		
 		return cable_array
 
-	def write_serial(self, slot:str, port:str, serial:str):
-		data:list = self.send_command(calibration_cmd_prefix + " add_serial " + slot + " " + port + " " + serial)
-		if data is None:
-			# if no data is returned, metadata may be full or crc is invalid
-			self.clear_eeprom_data(serial, "meta")
-			data = self.send_command(calibration_cmd_prefix + " add_serial " + slot + " " + port + " " + serial)
-
-		for line in data:
-			if line.find("serial: ") != -1:
-				return line.replace("serial: ", "").replace('\n', "")
-
 	def sort_and_write_sensors(self, serial:str, sensor_id:str = None):
 		cmd = calibration_cmd_prefix + " sort " + serial
 
@@ -283,14 +273,13 @@ class serial_605(usb_serial):
 	#### READ COMMANDS ####
 
 	def find_sensors_on_port(self, slot:int, port:int):
-		data = self.send_command(calibration_cmd_prefix + " find " + str(slot) + " " + str(port))
+		data = self.send_command(onewire_cmd_prefix + " find_devices " + str(slot) + " " + str(port))
 
 		ids: list = []
 		for line in data:
 			if line.find("id: ") != -1:
 				ids.append(line.replace("id: ", "").replace('\n', ""))
 
-		self.reverse_ids(ids)
 		return ids
 
 	def read_ids(self, serial:str):
@@ -301,7 +290,6 @@ class serial_605(usb_serial):
 			if line.find("id: ") != -1:
 				ids.append(line.replace("id: ", "").replace('\n', ""))
 
-		self.reverse_ids(ids)
 		return ids
 
 	def read_ids_from_eeprom(self, serial:str):
@@ -312,12 +300,22 @@ class serial_605(usb_serial):
 			if line.find("id: ") != -1:
 				ids.append(line.replace("id: ", "").replace('\n', ""))
 
-		self.reverse_ids(ids)
 		return ids
 
 	def read_sensor_temperatures(self, serial:str):
 
 		data = self.send_command(calibration_cmd_prefix + " temps " + serial)
+
+		temps: list = []
+		for line in data:
+			if line.find("temp: ") != -1:
+				temps.append(float(line.replace("temp: ", "").replace('\n', "")))
+
+		return temps
+
+	def read_raw_sensor_temperatures(self, serial:str):
+
+		data = self.send_command(onewire_cmd_prefix + " raw_temps " + serial)
 
 		temps: list = []
 		for line in data:
@@ -346,7 +344,6 @@ class serial_605(usb_serial):
 			if line.find("id: ") != -1:
 				ids.append(line.replace("id: ", ""))
 
-		self.reverse_ids(ids)
 		return ids
 
 	def read_eeprom_id(self, serial:str):
@@ -359,7 +356,7 @@ class serial_605(usb_serial):
 				if line.find("none") != -1:
 					print("Eeprom id for cable not found")
 				else:
-					id = self.reverse_id(line.replace("id: ", "").replace('\n', ""))
+					id = line.replace("id: ", "").replace('\n', "")
 
 		return id
 
