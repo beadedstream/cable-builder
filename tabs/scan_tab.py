@@ -21,7 +21,6 @@ class ScanTab(QWidget):
 
 		del sensors
 
-		self.img_folder = "ui/components/images/PCBA"
 		self.tray_char = 'A'
 		self.tray_num = 0
 		self.sensors_scanned = 0
